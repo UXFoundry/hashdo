@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <style type="text/css">{{{card.css}}}</style>
+  </head>
+  <body>
+    {{#if link}}
+    <a class="hdc-link" href="{{link}}" target="_blank">
+      {{> card}}
+    </a>
+    {{else}}
+      {{> card}}
+    {{/if}}
+    <script>{{{card.js}}}</script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+.settings
+.vscode
+.env
+node_modules
+build
+typings
+npm-debug.log
+
+# ignore .DS_Store files on OS X
+.DS_Store

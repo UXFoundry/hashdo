@@ -1,0 +1,16 @@
+include mixins
+
+if locals.card.css
+  style.
+    !{locals.card.css}
+
+if locals.link
+  a.hdc-link(href= locals.link, target='_blank')
+    +card
+
+else
+  +card
+
+if locals.card.js
+  script.
+    !{locals.card.js}

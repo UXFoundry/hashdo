@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>#Do Cards</title>
+  </head>
+  <body>
+    <h3>#Do Cards ({{this.0.pack}})</h3>
+    <ul>
+      {{#each this}}
+      <li><a href="/{{this.pack}}/{{this.card}}/test">{{this.card}}</a></li>
+      {{/each}}
+    </ul>
+  </body>
+</html>

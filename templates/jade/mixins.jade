@@ -1,0 +1,9 @@
+mixin card
+  .hdc(id= locals.card.id, class= locals.card.pack + ' ' + locals.card.name)
+    block header
+
+    .hdc-content
+      .hdc-inner
+        block content
+
+    block footer
