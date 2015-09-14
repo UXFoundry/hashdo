@@ -1,0 +1,14 @@
+extends /card
+
+block header
+  .hdc-hdr
+    .hdc-title
+      | <%= cardName %>
+
+block content
+  p(id='text-content')= locals.text
+
+block footer
+  if locals.footer && locals.footer.length > 0
+    .hdc-footer
+      p= locals.footer

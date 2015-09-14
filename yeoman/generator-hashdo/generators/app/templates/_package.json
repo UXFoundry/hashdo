@@ -1,0 +1,17 @@
+{
+  "name": "<%= camelCasePackName.toLowerCase() %>",
+  "version": "0.0.1",
+  "description": "<%- packDesc %>",
+  "keywords": [
+    "hashdo",
+    "<%= packName.toLowerCase() %>"
+  ],
+  "peerDependencies": {
+    "lodash": "3.x",
+    "request": "2.x"
+  },
+  "pack": {
+    "friendlyName": "<%= packName %>",
+    "cards": []
+  }
+}

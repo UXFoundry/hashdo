@@ -1,0 +1,21 @@
+{
+  "name": "generator-hashdo",
+  "version": "0.0.1",
+  "description": "Yeoman generator to create #Do packs and cards.",
+  "license": "MIT",
+  "main": "app/index.js",
+  "files": [
+    "generators"
+  ],
+  "keywords": [
+    "yeoman-generator",
+    "hashdo",
+    "cards"
+  ],
+  "dependencies": {
+    "chalk": "^1.1.1",
+    "lodash": "^3.10.1",
+    "yeoman-generator": "^0.20.3",
+    "yosay": "^1.0.5"
+  }
+}
