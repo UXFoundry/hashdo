@@ -42,6 +42,7 @@
     "moment": "2.10.6",
     "mongoose": "4.1.5",
     "node-sass": "3.3.2",
+    "normalize.less": "1.0.0",
     "open": "0.0.5",
     "request": "2.61.0",
     "safe-json-parse": "4.0.0",
