@@ -1,6 +1,6 @@
 module.exports = {
   state: {
-    cardExpiry: 3600, // seconds in an hour
+    cardExpiry: 3600, // seconds in a hour
     apiKeyExpiry: 604800 // seconds in a week
   },
 
