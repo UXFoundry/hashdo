@@ -54,6 +54,7 @@ module.exports = Yeoman.generators.Base.extend({
       type: 'input',
       name: 'cardDescription',
       message: 'Please provide a description for this card',
+      filter: function (value) { return value.replace(/'/g, '\\\'') },
       default: 'Demonstrates the functionality of a #Do card.'
     }, {
       type: 'list',
@@ -116,6 +117,7 @@ module.exports = Yeoman.generators.Base.extend({
       type: 'input',
       name: 'description',
       message: 'Please provide a description for this input',
+      filter: function (value) { return value.replace(/'/g, '\\\'') },
       validate: function (value) { return value.length > 0; },
       when: function (answers) { return answers.name === 'Custom'; }      
     }, {
@@ -133,7 +135,7 @@ module.exports = Yeoman.generators.Base.extend({
     }, {
       type: 'confirm',
       name: 'prompt',
-      message: 'Should the user be prompted to enter a value this input?',
+      message: 'Should the user be prompted to enter a value for this input?',
       default: false,
       when: function (answers) { return answers.name === 'Custom'; }
     }, {

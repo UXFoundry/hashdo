@@ -28,7 +28,8 @@ module.exports = Yeoman.generators.Base.extend({
     }, {
       type: 'input',
       name: 'packDesc',
-      message: 'Please provide a description for you card collection?',
+      message: 'Please provide a description for you card collection?',      
+      filter: function (value) { return value.replace(/'/g, '\\\'') },
       default: 'My demonstration #Do card pack.'
     }];
 
