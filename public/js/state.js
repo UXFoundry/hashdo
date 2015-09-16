@@ -1,4 +1,4 @@
-/* global $, Firebase, card, locals, getScript */
+/* global $, Firebase, card, locals, getScript, firebaseUrl, baseUrl */
 
 card.state = {
   onChange: function (val) {}
@@ -16,7 +16,7 @@ else {
 }
 
 function subscribe() {
-  card.fb = new Firebase('https://hashdo.firebaseio.com/card/' + locals.card.key);
+  card.fb = new Firebase(firebaseUrl + '/card/' + locals.card.key);
 
   if (card.fb) {
     card.fb.on('value', function (snapshot) {
@@ -31,7 +31,7 @@ function subscribe() {
 
 card.state.save = function (val, callback) {
   if (val) {
-    $.post('http://hashdo.com/api/card/state/save',
+    $.post(baseUrl + '/api/card/state/save',
       {
         cardKey: locals.card.key,
         apiKey: locals.card.apiKey,

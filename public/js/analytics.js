@@ -1,12 +1,12 @@
-/* global card, locals */
+/* global card, locals, baseUrl */
 
 card.analytics = {
 
 };
 
 card.analytics.record = function (events, callback) {
-  if (data) {
-    $.post('http://hashdo.com/api/card/analytics',
+  if (events) {
+    $.post(baseUrl + '/api/card/analytics',
       {
         cardKey: locals.card.key,
         apiKey: locals.card.apiKey,
