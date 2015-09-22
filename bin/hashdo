@@ -1,9 +1,0 @@
-#!/usr/bin/env node
-
-'use strict';
-
-process.title = '#Do';
-
-var HashDoCli = require('../cli');
-
-HashDoCli.run(process.argv);
