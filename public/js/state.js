@@ -5,7 +5,7 @@ card.state = {
 };
 
 if (typeof Firebase === 'undefined') {
-  card.require('https://cdn.firebase.com/js/client/2.2.9/firebase.js', function () {
+  card.require('https://cdn.firebase.com/js/client/2.3.1/firebase.js', function () {
     if (typeof Firebase !== 'undefined') {
       subscribe();
     }
@@ -16,7 +16,9 @@ else {
 }
 
 function subscribe() {
-  card.fb = new Firebase(firebaseUrl + '/card/' + locals.card.key);
+  if (firebaseUrl && firebaseUrl.length > 0) {
+    card.fb = new Firebase(firebaseUrl + '/card/' + locals.card.key);
+  }
 
   if (card.fb) {
     card.fb.on('value', function (snapshot) {

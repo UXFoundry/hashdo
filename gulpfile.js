@@ -4,11 +4,7 @@ var gulp = require('gulp'),
   
 var BUILD_PATH = './build/';
 var JS_LOCATIONS = [
-  './controllers/*.js',
-  './lib/*.js',
-  './models/*.js',
-  './cards/**/*.js',
-  './yeoman/generator-hashdo/generators/**/index.js'
+  './lib/*.js'
 ];
 var AUTOPREFIXER_BROWSERS = [
   'last 2 versions',
@@ -31,7 +27,7 @@ gulp.task('jshint', function () {
 gulp.task('less', function () {
   gulp.src('styles/less/cards.less')
     .pipe(plugins.less({
-      compress: true
+      compress: false
     }))
     .pipe(plugins.autoprefixer(AUTOPREFIXER_BROWSERS))
     .pipe(gulp.dest('public/css'));
@@ -73,7 +69,7 @@ gulp.task('clean', function (cb) {
 gulp.task('docs', function () {
   return gulp.src(JS_LOCATIONS.concat(['README.md']), {base: '.'})
     .pipe(plugins.doxx({
-      title: 'HashDo',
+      title: 'HashDo Framework',
       urlPrefix: ''
     }))
     .pipe(gulp.dest(BUILD_PATH + 'docs'));
@@ -91,40 +87,9 @@ gulp.task('test', function () {
     });;
 });
 
-// deploy
-gulp.task('deploy', gulp.series('clean', 'docs', 'bump', function () {
-  return gulp.src([
-    'app.js',
-    'config.js',
-    'package.json',
-
-    'cards/**/*.*',
-    'controllers/**/*.*',
-    'templates/**/*.*',
-    'styles/**/*.*',
-    'lib/**/*.*',
-    'models/**/*.*',
-    'public/**/*.*'
-  ], {base: '.'})
-    .pipe(gulp.dest(BUILD_PATH));
-}));
-
 gulp.task('watch', function () {
   gulp.watch(['styles/less/*.less'], gulp.series('less'));
   gulp.watch(JS_LOCATIONS, gulp.series('jshint', 'test'));
 });
 
-// Node
-gulp.task('nodemon', function () {
-  plugins.nodemon({
-    ignore: ['public/**', 'node_modules/**', '.git/**'],
-    ext: 'js',
-    script: 'app.js',    
-  })
-    .on('restart', function () {
-      console.clear();
-    });
-;
-});
-
-gulp.task('default', gulp.parallel('nodemon', 'watch'));
+gulp.task('default', gulp.series('watch'));
