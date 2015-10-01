@@ -1,5 +1,3 @@
-
-
 module.exports = {
   version: require('./package.json').version,
   analytics: require('./lib/analytics'), 

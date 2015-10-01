@@ -1,6 +1,5 @@
 var gulp = require('gulp'),
-  plugins = require('gulp-load-plugins')(),
-  console = require('better-console');  
+  plugins = require('gulp-load-plugins')();
   
 var BUILD_PATH = './build/';
 var JS_LOCATIONS = [
