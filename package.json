@@ -25,10 +25,10 @@
     "handlebars": "4.0.3",
     "html-minifier": "0.8.0",
     "jade": "1.11.0",
-    "jsonwebtoken": "5.0.5",
+    "jsonwebtoken": "5.4.0",
     "less": "2.5.3",
     "lodash": "3.10.1",
-    "node-sass": "3.3.2",
+    "node-sass": "3.3.3",
     "normalize.less": "1.0.0"
   },
   "devDependencies": {
