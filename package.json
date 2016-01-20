@@ -1,7 +1,7 @@
 {
   "name": "hashdo",
   "description": "Framework for creating stateful interaction cards that can be embedded in mobile applications or viewed in a browser.",
-  "version": "0.10.15",
+  "version": "0.10.16",
   "author": "HashDo <info@hashdo.com>",
   "license": "Apache-2.0",
   "keywords": [
@@ -16,18 +16,18 @@
     "url": "https://github.com/UXFoundry/hashdo/issues"
   },
   "dependencies": {
-    "async": "1.5.0",
+    "async": "1.5.2",
     "base-64": "0.1.0",
     "consolidate": "0.13.1",
     "cuid": "1.3.8",
     "firebase": "2.3.2",
     "fuzzysearch": "1.0.3",
     "handlebars": "4.0.5",
-    "html-minifier": "1.0.0",
+    "html-minifier": "1.1.1",
     "jade": "1.11.0",
-    "jsonwebtoken": "5.4.1",
+    "jsonwebtoken": "5.5.4",
     "less": "2.5.3",
-    "lodash": "3.10.1",
+    "lodash": "4.0.0",
     "node-sass": "3.4.2",
     "normalize.less": "1.0.0"
   },
@@ -41,12 +41,12 @@
     "gulp-jsbeautifier": "1.0.1",
     "gulp-jshint": "2.0.0",
     "gulp-less": "3.0.5",
-    "gulp-load-plugins": "1.1.0",
+    "gulp-load-plugins": "1.2.0",
     "gulp-mocha": "2.2.0",
     "gulp-rename": "1.2.2",
     "gulp-uglify": "1.5.1",
     "gulp-watch": "4.3.5",
-    "jshint": "2.8.0",
+    "jshint": "2.9.1",
     "jshint-stylish": "2.1.0",
     "mocha": "2.3.4"
   },
