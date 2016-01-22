@@ -5,7 +5,7 @@ card.state = {
 };
 
 if (typeof Firebase === 'undefined') {
-  card.require('https://cdn.firebase.com/js/client/2.3.1/firebase.js', function () {
+  card.require('https://cdn.firebase.com/js/client/2.4.0/firebase.js', function () {
     if (typeof Firebase !== 'undefined') {
       subscribe();
     }
