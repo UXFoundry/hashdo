@@ -1,7 +1,7 @@
 card.proxy = {
   post: function (endpoint, params, callback) {
     if (endpoint) {
-      $.post(baseUrl + '/api/card/proxy/post',
+      $.post(baseUrl + '/proxy' + locals.card.url,
         {
           cardKey: locals.card.key,
           apiKey: locals.card.apiKey,
