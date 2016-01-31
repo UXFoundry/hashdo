@@ -1,7 +1,7 @@
 {
   "name": "hashdo",
   "description": "Framework for creating stateful interaction cards that can be embedded in mobile applications or viewed in a browser.",
-  "version": "0.10.19",
+  "version": "0.10.20",
   "author": "HashDo <info@hashdo.com>",
   "license": "Apache-2.0",
   "keywords": [
@@ -26,13 +26,13 @@
     "html-minifier": "1.1.1",
     "jade": "1.11.0",
     "jsonwebtoken": "5.5.4",
-    "less": "2.5.3",
-    "lodash": "4.0.1",
+    "less": "2.6.0",
+    "lodash": "4.1.0",
     "node-sass": "3.4.2",
     "normalize.less": "1.0.0"
   },
   "devDependencies": {
-    "chai": "3.4.1",
+    "chai": "3.5.0",
     "del": "2.2.0",
     "gulp": "gulpjs/gulp#4.0",
     "gulp-autoprefixer": "3.1.0",
@@ -48,7 +48,7 @@
     "gulp-watch": "4.3.5",
     "jshint": "2.9.1",
     "jshint-stylish": "2.1.0",
-    "mocha": "2.3.4"
+    "mocha": "2.4.5"
   },
   "scripts": {},
   "engines": {
