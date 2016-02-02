@@ -400,6 +400,7 @@ th {
 }
 .hdc-inner p {
   color: #000;
+  margin: 0;
   line-height: 1.1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
