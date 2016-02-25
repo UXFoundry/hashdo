@@ -67,3 +67,34 @@ card.state.save = function (val, callback) {
     callback && callback();
   }
 };
+
+card.state.clear = function (callback) {
+  $.post(baseUrl + '/api/card/state/clear',
+    {
+      cardKey: locals.card.key,
+      apiKey: locals.card.apiKey
+    },
+    function (response) {
+      if (response.error) {
+        callback && callback(response.message);
+      }
+      else {
+        // trigger event
+        $('#' + locals.card.id).trigger('hdc:state', {
+          pack: locals.card.pack,
+          card: locals.card.name,
+          state: {}
+        });
+
+        // broadcast
+        if (card.fb) {
+          val.cardId = locals.card.id;
+          card.fb.set({});
+        }
+
+        // done
+        callback && callback();
+      }
+    }
+  );
+};
