@@ -90,7 +90,7 @@ Currently \#Do supports the following view engines.
 
 Any view engine that [Consolidate](https://github.com/tj/consolidate.js) supports can be added as well if necessary. Using a view engine is not a requirement, you are welcome to use regular HTML. 
 
-## CSS Presprocessor Support
+## CSS Preprocessor Support
 Currently \#Do supports the following CSS preprocessors.
 
 - [SASS](http://lesscss.org/)
