@@ -5,7 +5,7 @@ This is the base library that can be used in your own projects to generate, embe
 
 If you are looking for a way to create cards, get your hands on the [\#Do CLI](https://github.com/UXFoundry/hashdo-cli) which contains templates to quickly generate packs and cards as well as a test harness to easily test your card functionality.
 
-Card examples can be found [\here:](https://github.com/UXFoundry/hashdo-cards) 
+Card examples can be found [here:](https://github.com/UXFoundry/hashdo-cards) 
 
 ## Getting Started
 #### Step 1
