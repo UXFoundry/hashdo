@@ -15,7 +15,7 @@ function lload(cardId) {
 
   for (i; i < len; i += 1) {
     node = nodes[i];
-    node[ node.tagName !== 'LINK' ? 'src' : 'href' ] = node.getAttribute('data-src');
+    node[node.tagName !== 'LINK' ? 'src' : 'href'] = node.getAttribute('data-src');
     node.removeAttribute('data-src');
   }
 

@@ -23,13 +23,15 @@ gulp.task('jshint', function () {
     .pipe(plugins.jshint.reporter('jshint-stylish'));
 });
 
-gulp.task('less', function () {
+gulp.task('less', function (done) {
   gulp.src('styles/less/cards.less')
     .pipe(plugins.less({
       compress: false
     }))
     .pipe(plugins.autoprefixer(AUTOPREFIXER_BROWSERS))
     .pipe(gulp.dest('public/css'));
+
+  done();
 });
 
 gulp.task('zepto', function () {
