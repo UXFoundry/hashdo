@@ -18,12 +18,21 @@ card.modal = {
     // on close
     $modal.find('a[href="#close"]').on('click', function () {
       $('.hdc-modal').remove();
+
+      // reinstate message container scrolling
+      $('.messages-content').css('overflow', 'auto');
+
+      // trigger close event
+      card.modal.onClose && card.modal.onClose();
     });
 
     // populate
     if (html) {
       $('.hdc-modal-body').html(html);
     }
+
+    // prevent message container from scrolling
+    $('.messages-content').css('overflow', 'hidden');
 
     // trigger open event
     card.modal.onOpen && card.modal.onOpen($modal);
@@ -37,6 +46,9 @@ card.modal = {
 
   close: function () {
     $('.hdc-modal').remove();
+
+    // reinstate message container scrolling
+    $('.messages-content').css('overflow', 'auto');
 
     // trigger close event
     card.modal.onClose && card.modal.onClose();

@@ -687,7 +687,7 @@ html.ios-gt-6.pixel-ratio-3 .hdc-footer:before {
   font-weight: 400;
 }
 .hdc-modal > div {
-  width: 200px;
+  width: 250px;
   min-height: 50px;
   background: #fff;
   position: relative;
