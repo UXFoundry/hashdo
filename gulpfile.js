@@ -1,21 +1,21 @@
 var gulp = require('gulp'),
   plugins = require('gulp-load-plugins')();
   
-var BUILD_PATH = './build/';
-var JS_LOCATIONS = [
-  './lib/*.js'
-];
-var AUTOPREFIXER_BROWSERS = [
-  'last 2 versions',
-  'last 5 chrome versions',
-  'safari >= 5',
-  'ios >= 6',
-  'android >= 2',
-  'ff >= 30',
-  'opera >= 22',
-  'ie >= 8',
-  'ie_mob >= 10'
-];
+var BUILD_PATH = './build/',
+  JS_LOCATIONS = [
+    './lib/*.js'
+  ],
+  AUTOPREFIXER_BROWSERS = [
+    'last 2 versions',
+    'last 5 chrome versions',
+    'safari >= 5',
+    'ios >= 6',
+    'android >= 2',
+    'ff >= 30',
+    'opera >= 22',
+    'ie >= 8',
+    'ie_mob >= 10'
+  ];
 
 gulp.task('jshint', function () {
   return gulp.src(JS_LOCATIONS)
