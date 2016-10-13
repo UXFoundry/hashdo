@@ -1,7 +1,7 @@
 {
   "name": "hashdo",
   "description": "Framework for creating stateful interaction cards that can be embedded in mobile applications or viewed in a browser.",
-  "version": "0.10.58",
+  "version": "0.10.60",
   "author": "HashDo <info@hashdo.com>",
   "license": "Apache-2.0",
   "keywords": [
@@ -16,22 +16,22 @@
     "url": "https://github.com/UXFoundry/hashdo/issues"
   },
   "dependencies": {
-    "async": "2.0.1",
-    "autoprefixer": "6.4.0",
+    "async": "2.1.1",
+    "autoprefixer": "6.5.1",
     "base-64": "0.1.0",
     "consolidate": "0.14.1",
     "cuid": "1.3.8",
     "firebase": "2.4.2",
     "fuzzysearch": "1.0.3",
     "handlebars": "4.0.5",
-    "html-minifier": "3.0.2",
+    "html-minifier": "3.1.0",
     "jade": "1.11.0",
     "jsonwebtoken": "7.1.9",
     "less": "2.7.1",
-    "lodash": "4.15.0",
-    "node-sass": "3.8.0",
+    "lodash": "4.16.4",
+    "node-sass": "3.10.1",
     "normalize.less": "1.0.0",
-    "postcss": "5.1.2"
+    "postcss": "5.2.4"
   },
   "devDependencies": {
     "chai": "3.5.0",
@@ -43,14 +43,14 @@
     "gulp-jsbeautifier": "2.0.3",
     "gulp-jshint": "2.0.1",
     "gulp-less": "3.1.0",
-    "gulp-load-plugins": "1.2.4",
+    "gulp-load-plugins": "1.3.0",
     "gulp-mocha": "3.0.1",
     "gulp-rename": "1.2.2",
     "gulp-uglify": "2.0.0",
-    "gulp-watch": "4.3.9",
+    "gulp-watch": "4.3.10",
     "jshint": "2.9.3",
     "jshint-stylish": "2.2.1",
-    "mocha": "3.0.2"
+    "mocha": "3.1.2"
   },
   "scripts": {},
   "engines": {
