@@ -36,7 +36,8 @@ gulp.task('less', function (done) {
 
 gulp.task('zepto', function () {
   return gulp.src([
-    'public/js/zepto.js'
+    'public/js/zepto.js',
+    'public/js/touch.zepto.js'
   ])
     .pipe(plugins.uglify())
     .pipe(plugins.rename({
