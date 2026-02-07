@@ -94,6 +94,12 @@ export interface GetDataResult {
   viewModel: Record<string, unknown>;
   /** State to persist for next render */
   state?: CardState;
+  /**
+   * Plain-text or markdown output for chat-based AI clients.
+   * When present, MCP adapter returns this as the tool response text
+   * (alongside HTML for MCP Apps-compatible clients).
+   */
+  textOutput?: string;
 }
 
 // ---------------------------------------------------------------------------

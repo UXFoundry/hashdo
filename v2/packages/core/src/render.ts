@@ -17,7 +17,7 @@ export async function renderCard<S extends InputSchema>(
   state: CardState,
   /** Absolute path to the directory containing the card (for resolving template files) */
   cardDir?: string
-): Promise<{ html: string; state: CardState }> {
+): Promise<{ html: string; state: CardState; textOutput?: string }> {
   // 1. Fetch data
   const result = await card.getData({ inputs, state });
   const newState = { ...state, ...result.state };
@@ -43,5 +43,5 @@ export async function renderCard<S extends InputSchema>(
   ${html}
 </div>`.trim();
 
-  return { html: wrappedHtml, state: newState };
+  return { html: wrappedHtml, state: newState, textOutput: result.textOutput };
 }

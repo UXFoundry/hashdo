@@ -21,6 +21,8 @@ export interface McpCardServerOptions {
   stateStore?: StateStore;
   /** Absolute paths to card directories (for resolving templates), keyed by card name */
   cardDirs?: Record<string, string>;
+  /** Custom instructions for the AI about how to use #do/ cards */
+  instructions?: string;
 }
 
 /**
@@ -37,7 +39,10 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   const { name, version, cards, cardDirs = {} } = options;
   const stateStore = options.stateStore ?? new MemoryStateStore();
 
-  const server = new McpServer({ name, version });
+  const server = new McpServer(
+    { name, version },
+    { instructions: options.instructions ?? generateInstructions(cards) },
+  );
 
   for (const card of cards) {
     registerCardTool(server, card, stateStore, cardDirs[card.name]);
@@ -45,6 +50,30 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   }
 
   return server;
+}
+
+/**
+ * Generate default instructions that teach the AI about the #do/ pattern.
+ */
+function generateInstructions(cards: CardDefinition[]): string {
+  const cardList = cards
+    .map((c) => {
+      const tag = c.name.startsWith('do-') ? `#do/${c.name.slice(3)}` : `#${c.name}`;
+      return `  - ${tag} → call the "${c.name}" tool. ${c.description}`;
+    })
+    .join('\n');
+
+  return `You have access to HashDo actionable cards. When the user types a #do/ command (like #do/weather), invoke the matching tool immediately.
+
+Available cards:
+${cardList}
+
+Behavior:
+- When the user types "#do/weather" or "#do/weather Tokyo", call the do-weather tool right away.
+- Parse any text after the command as input (e.g. "#do/weather Paris" → city: "Paris").
+- If the tool returns text output, present it directly to the user formatted nicely.
+- You can also invoke these tools proactively when relevant to the conversation.
+- All inputs are optional unless marked required — the cards have smart defaults.`;
 }
 
 /**
@@ -77,14 +106,14 @@ function registerCardTool(
         await stateStore.set(cardKey, result.state);
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: result.html,
-          },
-        ],
-      };
+      // Return text output for chat clients, HTML for MCP Apps clients
+      const content: { type: 'text'; text: string }[] = [];
+      if (result.textOutput) {
+        content.push({ type: 'text' as const, text: result.textOutput });
+      }
+      content.push({ type: 'text' as const, text: result.html });
+
+      return { content };
     }
   );
 }

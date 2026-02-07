@@ -1,17 +1,30 @@
 #!/usr/bin/env npx tsx
 
 /**
- * Demo: Run all demo cards as an MCP server.
+ * HashDo MCP Server — Actionable cards for AI chat.
+ *
+ * Type #do/weather, #do/stock, or #do/qr in any MCP-compatible AI chat
+ * and get instant, actionable results.
  *
  * Usage:
- *   npx tsx serve-demo.ts          # Start MCP server (stdio)
+ *   npx tsx serve-demo.ts
  *
- * Add to claude_desktop_config.json:
+ * Claude Desktop — add to ~/Library/Application Support/Claude/claude_desktop_config.json:
  *   {
  *     "mcpServers": {
- *       "hashdo-demo": {
+ *       "hashdo": {
  *         "command": "npx",
- *         "args": ["tsx", "/path/to/hashdo/v2/serve-demo.ts"]
+ *         "args": ["tsx", "/absolute/path/to/hashdo/v2/serve-demo.ts"]
+ *       }
+ *     }
+ *   }
+ *
+ * Claude Code — add to .mcp.json:
+ *   {
+ *     "mcpServers": {
+ *       "hashdo": {
+ *         "command": "npx",
+ *         "args": ["tsx", "/absolute/path/to/hashdo/v2/serve-demo.ts"]
  *       }
  *     }
  *   }
@@ -30,13 +43,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function main() {
   await serveMcp({
-    name: 'hashdo-demo',
+    name: 'hashdo',
     version: '2.0.0-alpha.1',
-    cards: [qrCodeCard, stockQuoteCard, weatherCard],
+    cards: [weatherCard, stockQuoteCard, qrCodeCard],
     cardDirs: {
-      'qr-code': join(__dirname, 'demo-cards/qr-code'),
+      'do-weather': join(__dirname, 'demo-cards/weather'),
       'stock-quote': join(__dirname, 'demo-cards/stock-quote'),
-      'weather': join(__dirname, 'demo-cards/weather'),
+      'qr-code': join(__dirname, 'demo-cards/qr-code'),
     },
   });
 }
