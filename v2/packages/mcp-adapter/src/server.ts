@@ -57,48 +57,69 @@ const WIDGET_HTML = `<!DOCTYPE html>
 <body>
 <div id="card"></div>
 <script>
-// Inline MCP Apps protocol — no CDN dependency needed.
-// Implements the ui/initialize handshake + tool-result listener.
 (function() {
-  var host = window.parent;
-  var reqId = 1;
-
-  function send(msg) { host.postMessage(msg, '*'); }
+  var rendered = false;
 
   function render(html) {
-    if (html) document.getElementById('card').innerHTML = html;
+    if (!html || rendered) return;
+    rendered = true;
+    document.getElementById('card').innerHTML = html;
   }
 
-  // Listen for all host messages
-  window.addEventListener('message', function(event) {
-    if (event.source !== host) return;
-    var msg = event.data;
-    if (!msg) return;
+  // Extract HTML from a tool result object (tries _meta.html then structuredContent._cardHtml)
+  function extractHtml(result) {
+    if (!result) return null;
+    if (result._meta && result._meta.html) return result._meta.html;
+    if (result.structuredContent && result.structuredContent._cardHtml) return result.structuredContent._cardHtml;
+    return null;
+  }
 
-    // Handle ui/initialize response (has result.protocolVersion)
+  // --- Path 1: ChatGPT-specific globals (window.openai) ---
+  function tryOpenAI() {
+    if (typeof window.openai === 'undefined') return;
+    var meta = window.openai.toolResponseMetadata;
+    if (meta && meta.html) { render(meta.html); return; }
+    var output = window.openai.toolOutput;
+    if (output && output._cardHtml) { render(output._cardHtml); return; }
+  }
+  // ChatGPT sets globals asynchronously — listen for the event
+  window.addEventListener('openai:set_globals', function() { tryOpenAI(); });
+  // Also try immediately in case already set
+  tryOpenAI();
+
+  // --- Path 2: postMessage (MCP Apps standard + ChatGPT JSON-RPC) ---
+  // No event.source check — ChatGPT uses double-iframe sandbox proxy
+  window.addEventListener('message', function(event) {
+    var msg = event.data;
+    if (!msg || typeof msg !== 'object') return;
+
+    // MCP Apps: ui/initialize response → complete handshake
     if (msg.id && msg.result && msg.result.protocolVersion) {
-      send({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} });
+      window.parent.postMessage(
+        { jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} },
+        '*'
+      );
       return;
     }
 
-    // Handle tool result notification
+    // MCP Apps + ChatGPT: tool result notification
     if (msg.method === 'ui/notifications/tool-result' && msg.params) {
-      render(msg.params._meta ? msg.params._meta.html : null);
+      render(extractHtml(msg.params));
       return;
     }
   });
 
-  // Send ui/initialize request to start the handshake
-  send({
+  // --- Path 3: MCP Apps handshake (for non-ChatGPT hosts) ---
+  window.parent.postMessage({
     jsonrpc: '2.0',
-    id: reqId++,
+    id: 1,
     method: 'ui/initialize',
     params: {
       protocolVersion: '2026-01-26',
       appInfo: { name: 'HashDo Card', version: '1.0.0' },
       appCapabilities: {}
     }
-  });
+  }, '*');
 })();
 </script>
 </body>
@@ -210,7 +231,7 @@ function registerCardTool(
           resourceUri: WIDGET_RESOURCE_URI,
           domain: 'hashdo',
           csp: {
-            resourceDomains: ['esm.sh'],
+            resourceDomains: [],
             connectDomains: [],
           },
         },
@@ -265,9 +286,9 @@ function registerCardTool(
 
       return {
         content,
-        // viewModel visible to both model and widget (no raw HTML — breaks ChatGPT React hydration)
-        structuredContent: result.viewModel,
-        // HTML only visible to widget (not the model)
+        // viewModel + _cardHtml for ChatGPT's window.openai.toolOutput path
+        structuredContent: { ...result.viewModel, _cardHtml: result.html },
+        // HTML for MCP Apps postMessage path (widget-only, hidden from model)
         _meta: { html: result.html },
       };
     }
