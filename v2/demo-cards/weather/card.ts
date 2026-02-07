@@ -108,8 +108,9 @@ export default defineCard({
         sunset: daily?.sunset?.[0],
       };
     } catch (err) {
-      console.error(`[weather] ${err instanceof Error ? err.message : err}`);
-      throw new Error(`Failed to fetch weather data. The API may be unavailable — try again in a moment.`);
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error(`[weather] ${detail}`);
+      throw new Error(`Failed to fetch weather data: ${detail}`);
     }
 
     const { icon, condition } = weatherCodeToDescription(weather.weatherCode);

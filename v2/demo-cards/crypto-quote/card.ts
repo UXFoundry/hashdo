@@ -1,7 +1,7 @@
 import { defineCard } from '@hashdo/core';
 
 export default defineCard({
-  name: 'crypto-quote',
+  name: 'do-crypto',
   description:
     'Look up a cryptocurrency price by coin ID. Shows current price, 24h change, and market cap.',
 

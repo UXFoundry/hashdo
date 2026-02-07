@@ -9,7 +9,7 @@ const marketStateLabels: Record<string, string> = {
   CLOSED: 'Market Closed',
 };
 export default defineCard({
-  name: 'stock-quote',
+  name: 'do-stock',
   description:
     'Look up a stock price by ticker symbol. Shows current price, daily change, and key stats.',
 

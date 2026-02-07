@@ -5,7 +5,7 @@ import { defineCard } from '@hashdo/core';
  * Uses the public goqr.me API (no API key needed).
  */
 export default defineCard({
-  name: 'qr-code',
+  name: 'do-qr',
   description: 'Generate a QR code image from text or a URL. Returns an embeddable QR code.',
   icon: './icon.svg',
 
