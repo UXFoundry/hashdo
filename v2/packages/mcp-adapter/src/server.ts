@@ -1,5 +1,7 @@
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
   type CardDefinition,
   type InputSchema,
@@ -205,4 +207,24 @@ export async function serveMcp(options: McpCardServerOptions): Promise<void> {
   const server = createMcpCardServer(options);
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+/**
+ * Handle a single MCP HTTP request using Streamable HTTP transport.
+ * Designed to be mounted as a route handler in an existing HTTP server.
+ *
+ * Creates a fresh stateless transport per request, connects an MCP server,
+ * and delegates to the transport's handleRequest.
+ */
+export async function handleMcpRequest(
+  options: McpCardServerOptions,
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, // stateless
+  });
+  const server = createMcpCardServer(options);
+  await server.connect(transport);
+  await transport.handleRequest(req, res);
 }

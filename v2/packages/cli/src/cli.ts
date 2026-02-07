@@ -13,7 +13,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import { type CardDefinition, renderCard } from '@hashdo/core';
-import { serveMcp, createMcpCardServer } from '@hashdo/mcp-adapter';
+import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'serve';
@@ -26,6 +26,9 @@ async function main() {
       break;
     case 'preview':
       await cmdPreview();
+      break;
+    case 'start':
+      await cmdStart();
       break;
     case 'list':
       await cmdList();
@@ -49,15 +52,17 @@ HashDo CLI v2 — Actionable cards for the AI age
 Usage:
   hashdo serve [dir]     Start MCP server (stdio) exposing cards as tools
   hashdo preview [dir]   Start HTTP server for card preview/development
+  hashdo start [dir]     Start production server (preview + MCP over HTTP)
   hashdo list [dir]      List discovered cards
 
 Options:
-  --port <n>             Port for preview server (default: 3000)
+  --port <n>             Port for preview/start server (default: 3000, or PORT env)
   --help                 Show this help message
 
 Examples:
-  hashdo serve ./demo-cards          # Expose demo cards as MCP tools
+  hashdo serve ./demo-cards          # Expose demo cards as MCP tools (stdio)
   hashdo preview ./demo-cards        # Preview cards in browser at :3000
+  hashdo start ./demo-cards          # Production server with MCP at /mcp
   hashdo list ./demo-cards           # List available cards
 `);
 }
@@ -202,6 +207,100 @@ async function cmdPreview() {
     console.log(`[hashdo] Preview server running at http://localhost:${port}`);
     console.log(`[hashdo] ${initial.length} card(s) available:`);
     for (const { card } of initial) {
+      console.log(`  - http://localhost:${port}/card/${card.name}`);
+    }
+  });
+}
+
+async function cmdStart() {
+  const port = parseInt(
+    process.env.PORT ??
+      args.find((a) => a.startsWith('--port='))?.split('=')[1] ??
+      '3000',
+    10
+  );
+
+  const discovered = await discoverCards(targetDir);
+
+  if (discovered.length === 0) {
+    console.error(`No cards found in ${targetDir}`);
+    process.exit(1);
+  }
+
+  const cardMap = new Map(discovered.map((d) => [d.card.name, d]));
+  const cardDirs: Record<string, string> = {};
+  for (const { card, dir } of discovered) {
+    cardDirs[card.name] = dir;
+  }
+
+  const mcpOptions = {
+    name: 'hashdo-cards',
+    version: '2.0.0-alpha.1',
+    cards: discovered.map((d) => d.card),
+    cardDirs,
+  };
+
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url || '/', `http://localhost:${port}`);
+
+    // MCP endpoint
+    if (url.pathname === '/mcp') {
+      try {
+        await handleMcpRequest(mcpOptions, req, res);
+      } catch (err: any) {
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      }
+      return;
+    }
+
+    // Index page
+    if (url.pathname === '/') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(renderIndex(discovered.map((d) => d.card)));
+      return;
+    }
+
+    // Card preview
+    const cardMatch = url.pathname.match(/^\/card\/(.+)$/);
+    if (cardMatch) {
+      const entry = cardMap.get(cardMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`Card not found: ${cardMatch[1]}`);
+        return;
+      }
+
+      const inputs: Record<string, unknown> = {};
+      for (const [key, value] of url.searchParams) {
+        if (value === 'true') inputs[key] = true;
+        else if (value === 'false') inputs[key] = false;
+        else if (!isNaN(Number(value)) && value !== '') inputs[key] = Number(value);
+        else inputs[key] = value;
+      }
+
+      try {
+        const result = await renderCard(entry.card, inputs as any, {}, entry.dir);
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(renderPreviewPage(entry.card, result.html, inputs));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end(`Error rendering card: ${err.message}`);
+      }
+      return;
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
+  });
+
+  server.listen(port, () => {
+    console.log(`[hashdo] Production server running at http://localhost:${port}`);
+    console.log(`[hashdo] MCP endpoint: http://localhost:${port}/mcp`);
+    console.log(`[hashdo] ${discovered.length} card(s) available:`);
+    for (const { card } of discovered) {
       console.log(`  - http://localhost:${port}/card/${card.name}`);
     }
   });
