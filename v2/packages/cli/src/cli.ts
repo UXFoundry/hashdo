@@ -494,52 +494,156 @@ async function cmdList() {
 }
 
 function renderIndex(cards: CardDefinition[]): string {
-  const cardList = cards
-    .map(
-      (c) => `
-    <a href="/card/${c.name}" class="card-link">
-      <div class="card-item">
-        <h2>${c.name}</h2>
-        <p>${c.description}</p>
-        <div class="meta">
-          <span>Inputs: ${Object.keys(c.inputs).join(', ')}</span>
-          ${c.actions ? `<span>Actions: ${Object.keys(c.actions).join(', ')}</span>` : ''}
+  const CARD_META: Record<string, { icon: string; color: string; glow: string }> = {
+    'do-weather': { icon: '\u26C5', color: '#0A84FF', glow: 'rgba(10,132,255,0.15)' },
+    'do-stock':   { icon: '\uD83D\uDCC8', color: '#30D158', glow: 'rgba(48,209,88,0.15)' },
+    'do-crypto':  { icon: '\uD83E\uDE99', color: '#FF9F0A', glow: 'rgba(255,159,10,0.15)' },
+    'do-qr':      { icon: '\u2B21', color: '#BF5AF2', glow: 'rgba(191,90,242,0.15)' },
+  };
+  const fallbackMeta = { icon: '\u26A1', color: '#6b6b80', glow: 'rgba(107,107,128,0.15)' };
+
+  const cardList = cards.map((c, i) => {
+    const meta = CARD_META[c.name] ?? fallbackMeta;
+    const tag = c.name.startsWith('do-') ? `#do/${c.name.slice(3)}` : `#${c.name}`;
+    const desc = c.description.length > 100 ? c.description.slice(0, 97) + '...' : c.description;
+    const inputNames = Object.keys(c.inputs).slice(0, 5);
+    const chips = inputNames.map(n => `<span class="chip">${n}</span>`).join('');
+    const actions = c.actions ? Object.keys(c.actions) : [];
+    return `
+      <a href="/card/${c.name}" class="card" style="--accent:${meta.color};--glow:${meta.glow};animation-delay:${i * 80}ms">
+        <div class="card-accent"></div>
+        <div class="card-head">
+          <span class="card-icon">${meta.icon}</span>
+          <code class="card-tag">${tag}</code>
         </div>
-      </div>
-    </a>`
-    )
-    .join('\n');
+        <p class="card-desc">${desc}</p>
+        <div class="card-chips">
+          ${chips}
+          ${actions.length ? `<span class="chip chip-act">${actions.length} action${actions.length > 1 ? 's' : ''}</span>` : ''}
+        </div>
+      </a>`;
+  }).join('\n');
 
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HashDo Card Preview</title>
+  <title>HashDo \u2014 Live Data Cards for AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 40px 20px; }
-    h1 { font-size: 24px; margin-bottom: 8px; }
-    .subtitle { color: #666; margin-bottom: 32px; }
-    .card-link { text-decoration: none; color: inherit; }
-    .card-item {
-      background: white; border-radius: 12px; padding: 24px; margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: box-shadow 0.2s;
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#08080D;--surface:#111118;--surface-h:#191922;
+      --bdr:rgba(255,255,255,0.06);--bdr-h:rgba(255,255,255,0.1);
+      --text:#e4e4ec;--muted:#7a7a90;--dim:#44445a;
+      --red:#F44336;--blue:#0A84FF;
+      --font:'Outfit',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
     }
-    .card-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .card-item h2 { font-size: 18px; margin-bottom: 8px; color: #333; }
-    .card-item p { color: #666; font-size: 14px; margin-bottom: 12px; }
-    .meta { font-size: 12px; color: #999; }
-    .meta span { margin-right: 16px; }
-    .container { max-width: 640px; margin: 0 auto; }
+    html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    body{
+      font-family:var(--font);background:var(--bg);color:var(--text);
+      min-height:100vh;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 25% 40%,rgba(10,132,255,0.06),transparent),
+        radial-gradient(ellipse 60% 50% at 75% 60%,rgba(244,67,54,0.05),transparent);
+    }
+    main{max-width:700px;margin:0 auto;padding:80px 24px 60px}
+
+    /* ── Hero ─────────────────────────────────────── */
+    .hero{text-align:center;margin-bottom:64px}
+    .logo{display:inline-block;margin-bottom:24px;filter:drop-shadow(0 0 40px rgba(10,132,255,0.2)) drop-shadow(0 0 40px rgba(244,67,54,0.15))}
+    .logo svg{display:block}
+    .hero h1{font-size:42px;font-weight:800;letter-spacing:-1.5px;margin-bottom:8px}
+    .hero .sub{font-size:17px;color:var(--muted);font-weight:400;margin-bottom:6px}
+    .hero .platforms{font-size:13px;color:var(--dim);font-weight:400;letter-spacing:0.5px;margin-bottom:32px}
+    .terminal{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--surface);border:1px solid var(--bdr);border-radius:10px;
+      padding:12px 20px;font-family:var(--mono);font-size:14px;color:var(--muted);
+    }
+    .terminal .prompt{color:var(--blue);font-weight:500}
+    .terminal .cmd{color:var(--text)}
+    .terminal .cursor{display:inline-block;width:7px;height:17px;background:var(--blue);border-radius:1px;animation:blink 1s step-end infinite;vertical-align:text-bottom}
+    @keyframes blink{50%{opacity:0}}
+
+    /* ── Cards Grid ───────────────────────────────── */
+    .cards-label{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:20px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:560px){.grid{grid-template-columns:1fr}}
+
+    .card{
+      position:relative;overflow:hidden;
+      display:flex;flex-direction:column;
+      background:var(--surface);border:1px solid var(--bdr);border-radius:14px;
+      padding:24px;text-decoration:none;color:var(--text);
+      transition:all .3s cubic-bezier(.4,0,.2,1);
+      animation:fadeUp .5s ease both;
+    }
+    .card:hover{
+      background:var(--surface-h);border-color:var(--accent);
+      transform:translateY(-3px);
+      box-shadow:0 12px 40px var(--glow),0 0 0 1px var(--accent);
+    }
+    .card-accent{position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:.7;transition:opacity .3s}
+    .card:hover .card-accent{opacity:1}
+    .card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .card-icon{font-size:24px;line-height:1}
+    .card-tag{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--accent);background:none;border:none;padding:0}
+    .card-desc{font-size:14px;color:var(--muted);line-height:1.55;flex:1;margin-bottom:16px}
+    .card-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{
+      font-family:var(--mono);font-size:11px;font-weight:400;
+      color:var(--dim);background:rgba(255,255,255,0.04);
+      padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,0.04);
+    }
+    .chip-act{color:var(--accent);border-color:rgba(255,255,255,0.06)}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ── Footer ───────────────────────────────────── */
+    footer{
+      text-align:center;margin-top:56px;padding-top:28px;
+      border-top:1px solid var(--bdr);
+      font-size:13px;color:var(--dim);
+    }
+    footer a{color:var(--muted);text-decoration:none;transition:color .2s}
+    footer a:hover{color:var(--text)}
+    footer .dot{margin:0 10px;opacity:.4}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>#do Cards</h1>
-    <p class="subtitle">${cards.length} card${cards.length !== 1 ? 's' : ''} available</p>
-    ${cardList}
-  </div>
+  <main>
+    <section class="hero">
+      <div class="logo">
+        <svg viewBox="0 0 500 500" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="166" width="444" height="72" rx="36" fill="#0A84FF"/>
+          <rect x="28" y="262" width="444" height="72" rx="36" fill="#0A84FF"/>
+          <rect x="166" y="28" width="72" height="444" rx="36" fill="#F44336"/>
+          <rect x="262" y="28" width="72" height="444" rx="36" fill="#F44336"/>
+        </svg>
+      </div>
+      <h1>HashDo</h1>
+      <p class="sub">Live data cards for AI conversations</p>
+      <p class="platforms">Works with ChatGPT \u00B7 Claude \u00B7 VS Code</p>
+      <div class="terminal">
+        <span class="prompt">&gt;</span>
+        <span class="cmd">#do/weather Tokyo</span>
+        <span class="cursor"></span>
+      </div>
+    </section>
+
+    <p class="cards-label">Available Cards</p>
+    <div class="grid">
+      ${cardList}
+    </div>
+
+    <footer>
+      <a href="/privacy">Privacy</a><span class="dot">\u00B7</span><a href="/terms">Terms</a><span class="dot">\u00B7</span><a href="https://github.com/UXFoundry/hashdo">GitHub</a>
+    </footer>
+  </main>
 </body>
 </html>`;
 }
@@ -620,27 +724,93 @@ function renderPreviewPage(
 
 function renderLegalPage(title: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title} — HashDo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 40px 20px; color: #333; line-height: 1.6; }
-    .container { max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    h1 { font-size: 24px; margin-bottom: 8px; }
-    h2 { font-size: 18px; margin-top: 28px; margin-bottom: 8px; }
-    p, li { font-size: 15px; margin-bottom: 12px; }
-    ul { padding-left: 24px; }
-    .updated { color: #999; font-size: 13px; margin-bottom: 24px; }
-    a { color: #0A84FF; }
+    :root{
+      --bg:#08080D;--surface:#101018;--bdr:rgba(255,255,255,0.06);
+      --text:#E8E8ED;--muted:#9A9AAF;--dim:#5C5C72;
+      --accent:#0A84FF;--red:#F44336;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Outfit',system-ui,-apple-system,sans-serif;
+      background:var(--bg);color:var(--text);line-height:1.7;
+      min-height:100vh;
+    }
+
+    /* ── Ambient glow ────────────────────────────── */
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(ellipse 50% 40% at 25% 0%, rgba(244,67,54,0.06) 0%, transparent 100%),
+        radial-gradient(ellipse 50% 40% at 75% 0%, rgba(10,132,255,0.06) 0%, transparent 100%);
+    }
+
+    /* ── Layout ──────────────────────────────────── */
+    .page{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:48px 24px 64px}
+
+    /* ── Header ──────────────────────────────────── */
+    .header{display:flex;align-items:center;gap:14px;margin-bottom:40px}
+    .header svg{flex-shrink:0;filter:drop-shadow(0 0 8px rgba(244,67,54,0.25)) drop-shadow(0 0 8px rgba(10,132,255,0.2))}
+    .header a{
+      text-decoration:none;display:flex;align-items:center;gap:14px;
+      color:var(--text);transition:opacity .2s;
+    }
+    .header a:hover{opacity:.8}
+    .wordmark{font-size:22px;font-weight:600;letter-spacing:-0.5px}
+
+    /* ── Content card ────────────────────────────── */
+    .card{
+      background:var(--surface);border:1px solid var(--bdr);
+      border-radius:16px;padding:40px 36px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.3);
+    }
+    .card h1{font-size:26px;font-weight:600;letter-spacing:-0.5px;margin-bottom:6px}
+    .card h2{font-size:17px;font-weight:600;margin-top:32px;margin-bottom:10px;color:var(--text)}
+    .card p,.card li{font-size:15px;color:var(--muted);margin-bottom:12px}
+    .card ul{padding-left:22px}
+    .card li::marker{color:var(--dim)}
+    .card strong{color:var(--text);font-weight:500}
+    .card a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(10,132,255,0.3);transition:border-color .2s}
+    .card a:hover{border-color:var(--accent)}
+    .updated{color:var(--dim);font-size:13px;margin-bottom:28px}
+
+    /* ── Footer ──────────────────────────────────── */
+    .footer{
+      text-align:center;margin-top:40px;
+      font-size:13px;color:var(--dim);
+    }
+    .footer a{color:var(--muted);text-decoration:none;transition:color .2s}
+    .footer a:hover{color:var(--text)}
+    .footer .dot{margin:0 10px;opacity:.4}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>${title}</h1>
-    ${bodyHtml}
+  <div class="page">
+    <div class="header">
+      <a href="/">
+        <svg viewBox="0 0 500 500" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
+          <rect x="28" y="166" width="444" height="72" rx="36" fill="#0A84FF"/>
+          <rect x="28" y="262" width="444" height="72" rx="36" fill="#0A84FF"/>
+          <rect x="166" y="28" width="72" height="444" rx="36" fill="#F44336"/>
+          <rect x="262" y="28" width="72" height="444" rx="36" fill="#F44336"/>
+        </svg>
+        <span class="wordmark">HashDo</span>
+      </a>
+    </div>
+    <div class="card">
+      <h1>${title}</h1>
+      ${bodyHtml}
+    </div>
+    <div class="footer">
+      <a href="/privacy">Privacy</a><span class="dot">\u00B7</span><a href="/terms">Terms</a><span class="dot">\u00B7</span><a href="/">Home</a>
+    </div>
   </div>
 </body>
 </html>`;
