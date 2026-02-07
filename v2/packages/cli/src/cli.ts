@@ -406,6 +406,20 @@ async function cmdStart() {
       return;
     }
 
+    // Privacy policy
+    if (url.pathname === '/privacy') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(renderLegalPage('Privacy Policy', PRIVACY_POLICY));
+      return;
+    }
+
+    // Terms of service
+    if (url.pathname === '/terms') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(renderLegalPage('Terms of Service', TERMS_OF_SERVICE));
+      return;
+    }
+
     // Index page
     if (url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -599,6 +613,120 @@ function renderPreviewPage(
 </body>
 </html>`;
 }
+
+// ---------------------------------------------------------------------------
+// Legal pages
+// ---------------------------------------------------------------------------
+
+function renderLegalPage(title: string, bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title} — HashDo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 40px 20px; color: #333; line-height: 1.6; }
+    .container { max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    h2 { font-size: 18px; margin-top: 28px; margin-bottom: 8px; }
+    p, li { font-size: 15px; margin-bottom: 12px; }
+    ul { padding-left: 24px; }
+    .updated { color: #999; font-size: 13px; margin-bottom: 24px; }
+    a { color: #0A84FF; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${title}</h1>
+    ${bodyHtml}
+  </div>
+</body>
+</html>`;
+}
+
+const PRIVACY_POLICY = `
+<p class="updated">Last updated: February 7, 2026</p>
+
+<p>HashDo ("we", "us", "our") operates the HashDo card service. This policy describes what data we collect and how we use it.</p>
+
+<h2>Data We Collect</h2>
+<p>HashDo is designed to collect as little data as possible:</p>
+<ul>
+  <li><strong>Card inputs</strong> — Parameters you provide when using a card (e.g. a city name for weather, a stock ticker). These are processed in real-time and not stored permanently.</li>
+  <li><strong>IP-based geolocation</strong> — When using the weather card without a city, your approximate location is inferred from your IP address via a third-party service (ip-api.com). We do not store your IP address.</li>
+  <li><strong>Usage counts</strong> — We track how many times each card is used (aggregate only, not per-user) to sort the card list by popularity.</li>
+</ul>
+
+<h2>Data We Do Not Collect</h2>
+<ul>
+  <li>No user accounts or authentication</li>
+  <li>No personal information (name, email, etc.)</li>
+  <li>No cookies or tracking pixels</li>
+  <li>No analytics or advertising SDKs</li>
+</ul>
+
+<h2>Third-Party Services</h2>
+<p>Card data is fetched from third-party APIs. Each has its own privacy policy:</p>
+<ul>
+  <li><strong>Weather</strong> — <a href="https://open-meteo.com/en/terms">Open-Meteo</a> (weather data), <a href="https://ip-api.com/">ip-api.com</a> (geolocation)</li>
+  <li><strong>Stocks</strong> — <a href="https://www.yahoo.com/privacy">Yahoo Finance</a></li>
+  <li><strong>Crypto</strong> — <a href="https://www.coingecko.com/en/privacy">CoinGecko</a></li>
+</ul>
+
+<h2>Data Retention</h2>
+<p>Card state (e.g. last weather check count) is stored in server memory and is lost when the server restarts. No data is persisted to disk or external databases.</p>
+
+<h2>Children's Privacy</h2>
+<p>HashDo does not knowingly collect data from children under 13.</p>
+
+<h2>Changes</h2>
+<p>We may update this policy from time to time. Changes will be reflected on this page with an updated date.</p>
+
+<h2>Contact</h2>
+<p>Questions? Reach us at <a href="https://github.com/UXFoundry/hashdo">github.com/UXFoundry/hashdo</a>.</p>
+`;
+
+const TERMS_OF_SERVICE = `
+<p class="updated">Last updated: February 7, 2026</p>
+
+<p>These terms govern your use of the HashDo card service ("Service") operated by HashDo ("we", "us", "our").</p>
+
+<h2>Acceptance</h2>
+<p>By using HashDo, you agree to these terms. If you do not agree, do not use the Service.</p>
+
+<h2>What HashDo Does</h2>
+<p>HashDo provides live data cards (weather, stock quotes, crypto prices, QR codes) that can be used within AI chat applications via the Model Context Protocol (MCP). The cards fetch data from third-party APIs and render visual results.</p>
+
+<h2>No Warranty</h2>
+<p>The Service is provided "as is" without warranty of any kind. We do not guarantee that:</p>
+<ul>
+  <li>The data displayed is accurate, complete, or current</li>
+  <li>The Service will be available at all times or without interruption</li>
+  <li>Third-party API data (weather, stock prices, crypto prices) is suitable for financial or critical decisions</li>
+</ul>
+
+<h2>Not Financial Advice</h2>
+<p>Stock and cryptocurrency data is provided for informational purposes only. It is not financial advice. Do not make investment decisions based on data from HashDo.</p>
+
+<h2>Acceptable Use</h2>
+<p>You agree not to:</p>
+<ul>
+  <li>Use the Service for any unlawful purpose</li>
+  <li>Attempt to overload, disrupt, or reverse-engineer the Service</li>
+  <li>Use automated tools to scrape or abuse the Service beyond normal usage</li>
+</ul>
+
+<h2>Limitation of Liability</h2>
+<p>To the maximum extent permitted by law, we are not liable for any damages arising from your use of the Service, including but not limited to inaccurate data, service downtime, or losses from decisions made using the Service.</p>
+
+<h2>Changes</h2>
+<p>We may update these terms at any time. Continued use of the Service after changes constitutes acceptance of the updated terms.</p>
+
+<h2>Contact</h2>
+<p>Questions? Reach us at <a href="https://github.com/UXFoundry/hashdo">github.com/UXFoundry/hashdo</a>.</p>
+`;
 
 main().catch((err) => {
   console.error(err);
