@@ -57,18 +57,28 @@ const WIDGET_HTML = `<!DOCTYPE html>
 <body>
 <div id="card"></div>
 <script type="module">
+// Render card HTML into the DOM
+function render(html) {
+  if (html) document.getElementById('card').innerHTML = html;
+}
+
+// 1. MCP Apps standard: use App class from ext-apps SDK
 import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@1';
-
 const app = new App({ name: 'HashDo Card', version: '1.0.0' });
-
 app.ontoolresult = (result) => {
-  const html = result._meta?.html;
-  if (html) {
-    document.getElementById('card').innerHTML = html;
-  }
+  render(result._meta?.html ?? result.structuredContent?.html);
 };
-
 app.connect();
+
+// 2. ChatGPT native fallback: listen for raw postMessage JSON-RPC
+window.addEventListener('message', (event) => {
+  if (event.source !== window.parent) return;
+  const msg = event.data;
+  if (!msg || msg.jsonrpc !== '2.0') return;
+  if (msg.method !== 'ui/notifications/tool-result') return;
+  const p = msg.params || {};
+  render(p._meta?.html ?? p.structuredContent?.html);
+}, { passive: true });
 </script>
 </body>
 </html>`;
@@ -225,8 +235,8 @@ function registerCardTool(
 
       return {
         content,
-        // viewModel visible to both model and widget
-        structuredContent: result.viewModel,
+        // viewModel + html visible to both model and widget
+        structuredContent: { ...result.viewModel, html: result.html },
         // HTML only visible to widget (not the model)
         _meta: { html: result.html },
       };
