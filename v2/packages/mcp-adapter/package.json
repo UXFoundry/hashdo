@@ -20,6 +20,7 @@
   "dependencies": {
     "@hashdo/core": "2.0.0-alpha.1",
     "@hashdo/screenshot": "2.0.0-alpha.1",
+    "@modelcontextprotocol/ext-apps": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^4.3.6"
   },

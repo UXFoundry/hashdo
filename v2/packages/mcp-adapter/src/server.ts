@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { type IncomingMessage, type ServerResponse } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -11,6 +11,11 @@ import {
   renderCard,
 } from '@hashdo/core';
 import { renderHtmlToImage } from '@hashdo/screenshot';
+import {
+  registerAppTool,
+  registerAppResource,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { inputSchemaToZodShape } from './schema.js';
 
 export interface McpCardServerOptions {
@@ -30,15 +35,53 @@ export interface McpCardServerOptions {
   enableScreenshots?: boolean;
 }
 
+/** URI for the shared card widget resource */
+const WIDGET_RESOURCE_URI = 'ui://hashdo/card-widget.html';
+
 /**
- * Create an MCP server that exposes HashDo cards as tools.
+ * Self-contained widget HTML that renders card output inside an MCP Apps iframe.
+ * Receives tool results via the App class postMessage protocol, then injects
+ * the card HTML from _meta.html into the DOM.
+ */
+const WIDGET_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; }
+  #card { width: 100%; }
+</style>
+</head>
+<body>
+<div id="card"></div>
+<script type="module">
+import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@1';
+
+const app = new App({ name: 'HashDo Card', version: '1.0.0' });
+
+app.ontoolresult = (result) => {
+  const html = result._meta?.html;
+  if (html) {
+    document.getElementById('card').innerHTML = html;
+  }
+};
+
+app.connect();
+</script>
+</body>
+</html>`;
+
+/**
+ * Create an MCP server that exposes HashDo cards as MCP Apps tools.
  *
  * Each card becomes:
  * - A tool named `{card.name}` with the card's inputs as parameters
  * - Each card action becomes a tool named `{card.name}__{action}`
  *
- * When enableScreenshots is true, tool responses include rendered PNG images
- * alongside text output.
+ * Tools declare a ui:// resource so MCP Apps hosts (ChatGPT, Claude, VS Code)
+ * render interactive card HTML in a sandboxed iframe.
  */
 export function createMcpCardServer(options: McpCardServerOptions) {
   const { name, version, cards, cardDirs = {}, enableScreenshots = false } = options;
@@ -47,6 +90,21 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   const server = new McpServer(
     { name, version },
     { instructions: options.instructions ?? generateInstructions(cards) },
+  );
+
+  // Register the shared widget resource (one resource serves all cards)
+  registerAppResource(
+    server,
+    'HashDo Card Widget',
+    WIDGET_RESOURCE_URI,
+    { mimeType: RESOURCE_MIME_TYPE },
+    async () => ({
+      contents: [{
+        uri: WIDGET_RESOURCE_URI,
+        mimeType: RESOURCE_MIME_TYPE,
+        text: WIDGET_HTML,
+      }],
+    }),
   );
 
   for (const card of cards) {
@@ -85,7 +143,7 @@ Behavior:
 }
 
 /**
- * Register the main card tool (getData + render).
+ * Register the main card tool (getData + render) as an MCP App tool.
  */
 function registerCardTool(
   server: McpServer,
@@ -96,10 +154,21 @@ function registerCardTool(
 ) {
   const zodShape = inputSchemaToZodShape(card.inputs);
 
-  server.tool(
+  registerAppTool(
+    server,
     card.name,
-    card.description,
-    zodShape,
+    {
+      description: card.description,
+      inputSchema: zodShape,
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+        destructiveHint: false,
+      },
+      _meta: {
+        ui: { resourceUri: WIDGET_RESOURCE_URI },
+      },
+    },
     async (params: Record<string, unknown>) => {
       const inputs = params as any;
       const cardKey = `card:${card.name}:${stableKey(inputs)}`;
@@ -121,19 +190,16 @@ function registerCardTool(
       const usageCount = (usageState?.['count'] as number) ?? 0;
       await stateStore.set(usageKey, { count: usageCount + 1 });
 
-      // Build response content
+      // Build content array (backward compat for non-Apps hosts)
       const content: Array<
         | { type: 'text'; text: string }
         | { type: 'image'; data: string; mimeType: string }
       > = [];
 
-      // Text output (readable summary for chat clients)
       if (result.textOutput) {
         content.push({ type: 'text' as const, text: result.textOutput });
       }
 
-      // Screenshot (rendered card image) — skip raw HTML when image succeeds
-      let hasImage = false;
       if (enableScreenshots) {
         const imageBuffer = await renderHtmlToImage(result.html);
         if (imageBuffer) {
@@ -142,16 +208,21 @@ function registerCardTool(
             data: imageBuffer.toString('base64'),
             mimeType: 'image/png',
           });
-          hasImage = true;
         }
       }
 
-      // Raw HTML only as fallback when no image was rendered
-      if (!hasImage) {
+      // Fallback: raw HTML as text for non-Apps clients without screenshots
+      if (content.length === 0) {
         content.push({ type: 'text' as const, text: result.html });
       }
 
-      return { content };
+      return {
+        content,
+        // viewModel visible to both model and widget
+        structuredContent: result.viewModel,
+        // HTML only visible to widget (not the model)
+        _meta: { html: result.html },
+      };
     }
   );
 }
@@ -180,10 +251,17 @@ function registerActionTools(
     const description =
       action.description ?? `${action.label} — action on ${card.name} card`;
 
-    server.tool(
+    server.registerTool(
       toolName,
-      description,
-      zodShape,
+      {
+        description,
+        inputSchema: zodShape,
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+          destructiveHint: false,
+        },
+      },
       async (params: Record<string, unknown>) => {
         const cardInputs: Record<string, unknown> = {};
         const actionInputs: Record<string, unknown> = {};
@@ -233,10 +311,16 @@ function registerListTool(
   cards: CardDefinition[],
   stateStore: StateStore
 ) {
-  server.tool(
+  server.registerTool(
     'do-list',
-    'List all available #do/ cards, sorted by most used',
-    {},
+    {
+      description: 'List all available #do/ cards, sorted by most used',
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+        destructiveHint: false,
+      },
+    },
     async () => {
       // Gather usage counts
       const cardsWithUsage = await Promise.all(
