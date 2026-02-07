@@ -166,7 +166,14 @@ function registerCardTool(
         destructiveHint: false,
       },
       _meta: {
-        ui: { resourceUri: WIDGET_RESOURCE_URI },
+        ui: {
+          resourceUri: WIDGET_RESOURCE_URI,
+          domain: 'hashdo',
+          csp: {
+            resourceDomains: ['esm.sh'],
+            connectDomains: [],
+          },
+        },
       },
     },
     async (params: Record<string, unknown>) => {
