@@ -1,0 +1,8 @@
+{
+  "name": "@hashdo/card-weather",
+  "version": "1.0.0",
+  "description": "Current weather conditions for any location",
+  "type": "module",
+  "main": "card.js",
+  "license": "MIT"
+}

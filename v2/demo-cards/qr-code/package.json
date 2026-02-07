@@ -1,0 +1,8 @@
+{
+  "name": "@hashdo/card-qr-code",
+  "version": "1.0.0",
+  "description": "Generate QR codes from text or URLs",
+  "type": "module",
+  "main": "card.js",
+  "license": "MIT"
+}

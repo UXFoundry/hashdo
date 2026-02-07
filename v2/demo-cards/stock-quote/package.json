@@ -1,0 +1,8 @@
+{
+  "name": "@hashdo/card-stock-quote",
+  "version": "1.0.0",
+  "description": "Display real-time stock price information",
+  "type": "module",
+  "main": "card.js",
+  "license": "MIT"
+}
