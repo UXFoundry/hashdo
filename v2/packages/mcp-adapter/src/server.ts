@@ -132,7 +132,8 @@ function registerCardTool(
         content.push({ type: 'text' as const, text: result.textOutput });
       }
 
-      // Screenshot (rendered card image)
+      // Screenshot (rendered card image) — skip raw HTML when image succeeds
+      let hasImage = false;
       if (enableScreenshots) {
         const imageBuffer = await renderHtmlToImage(result.html);
         if (imageBuffer) {
@@ -141,11 +142,14 @@ function registerCardTool(
             data: imageBuffer.toString('base64'),
             mimeType: 'image/png',
           });
+          hasImage = true;
         }
       }
 
-      // Raw HTML (for MCP Apps-compatible clients or fallback)
-      content.push({ type: 'text' as const, text: result.html });
+      // Raw HTML only as fallback when no image was rendered
+      if (!hasImage) {
+        content.push({ type: 'text' as const, text: result.html });
+      }
 
       return { content };
     }
