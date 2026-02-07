@@ -4,5 +4,12 @@
   "description": "Display real-time stock price information",
   "type": "module",
   "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
   "license": "MIT"
 }

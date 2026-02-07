@@ -84,8 +84,8 @@ async function discoverCards(
     const entryStat = await stat(entryPath);
 
     if (entryStat.isDirectory()) {
-      // Look for card.ts or card.js in this directory
-      for (const cardFile of ['card.ts', 'card.js']) {
+      // Prefer card.js (compiled) over card.ts (source)
+      for (const cardFile of ['card.js', 'card.ts']) {
         const cardPath = join(entryPath, cardFile);
         try {
           await stat(cardPath);
@@ -93,6 +93,7 @@ async function discoverCards(
           const cardDef = mod.default || mod;
           if (cardDef && cardDef.name && cardDef.inputs && cardDef.getData) {
             cards.push({ card: cardDef, dir: entryPath });
+            break; // Don't load both .js and .ts
           }
         } catch {
           // Not a card directory, skip

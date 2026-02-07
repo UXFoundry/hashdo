@@ -4,5 +4,12 @@
   "description": "Display cryptocurrency price and 24h change",
   "type": "module",
   "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
   "license": "MIT"
 }
