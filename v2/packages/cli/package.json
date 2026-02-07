@@ -1,0 +1,23 @@
+{
+  "name": "@hashdo/cli",
+  "version": "2.0.0-alpha.1",
+  "description": "CLI for developing and serving HashDo cards",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "hashdo": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@hashdo/core": "2.0.0-alpha.1",
+    "@hashdo/mcp-adapter": "2.0.0-alpha.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  },
+  "license": "MIT"
+}

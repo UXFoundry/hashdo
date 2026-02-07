@@ -1,0 +1,8 @@
+{
+  "name": "@hashdo/card-crypto-quote",
+  "version": "1.0.0",
+  "description": "Display cryptocurrency price and 24h change",
+  "type": "module",
+  "main": "card.js",
+  "license": "MIT"
+}
