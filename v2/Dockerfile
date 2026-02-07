@@ -1,7 +1,19 @@
 FROM node:20-slim
+
+# Install Chromium for card screenshot rendering + emoji/sans-serif fonts
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-noto-color-emoji \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/
+COPY packages/screenshot/package.json packages/screenshot/
 COPY packages/mcp-adapter/package.json packages/mcp-adapter/
 COPY packages/cli/package.json packages/cli/
 COPY demo-cards/qr-code/package.json demo-cards/qr-code/

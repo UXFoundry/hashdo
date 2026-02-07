@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@hashdo/core": "2.0.0-alpha.1",
-    "@hashdo/mcp-adapter": "2.0.0-alpha.1"
+    "@hashdo/mcp-adapter": "2.0.0-alpha.1",
+    "@hashdo/screenshot": "2.0.0-alpha.1"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

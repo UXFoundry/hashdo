@@ -10,6 +10,7 @@ import {
   MemoryStateStore,
   renderCard,
 } from '@hashdo/core';
+import { renderHtmlToImage } from '@hashdo/screenshot';
 import { inputSchemaToZodShape } from './schema.js';
 
 export interface McpCardServerOptions {
@@ -25,6 +26,8 @@ export interface McpCardServerOptions {
   cardDirs?: Record<string, string>;
   /** Custom instructions for the AI about how to use #do/ cards */
   instructions?: string;
+  /** Render card HTML to PNG images in tool responses. Requires Chromium. */
+  enableScreenshots?: boolean;
 }
 
 /**
@@ -34,11 +37,11 @@ export interface McpCardServerOptions {
  * - A tool named `{card.name}` with the card's inputs as parameters
  * - Each card action becomes a tool named `{card.name}__{action}`
  *
- * The tool response includes rendered HTML content that MCP Apps-compatible
- * clients can display inline.
+ * When enableScreenshots is true, tool responses include rendered PNG images
+ * alongside text output.
  */
 export function createMcpCardServer(options: McpCardServerOptions) {
-  const { name, version, cards, cardDirs = {} } = options;
+  const { name, version, cards, cardDirs = {}, enableScreenshots = false } = options;
   const stateStore = options.stateStore ?? new MemoryStateStore();
 
   const server = new McpServer(
@@ -47,9 +50,11 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   );
 
   for (const card of cards) {
-    registerCardTool(server, card, stateStore, cardDirs[card.name]);
+    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots);
     registerActionTools(server, card, stateStore);
   }
+
+  registerListTool(server, cards, stateStore);
 
   return server;
 }
@@ -75,7 +80,8 @@ Behavior:
 - Parse any text after the command as input (e.g. "#do/weather Paris" → city: "Paris").
 - If the tool returns text output, present it directly to the user formatted nicely.
 - You can also invoke these tools proactively when relevant to the conversation.
-- All inputs are optional unless marked required — the cards have smart defaults.`;
+- All inputs are optional unless marked required — the cards have smart defaults.
+- When the user types just "#do" or "#do/list", call the "do-list" tool to show available commands.`;
 }
 
 /**
@@ -85,7 +91,8 @@ function registerCardTool(
   server: McpServer,
   card: CardDefinition,
   stateStore: StateStore,
-  cardDir?: string
+  cardDir: string | undefined,
+  enableScreenshots: boolean
 ) {
   const zodShape = inputSchemaToZodShape(card.inputs);
 
@@ -108,11 +115,36 @@ function registerCardTool(
         await stateStore.set(cardKey, result.state);
       }
 
-      // Return text output for chat clients, HTML for MCP Apps clients
-      const content: { type: 'text'; text: string }[] = [];
+      // Track usage
+      const usageKey = `usage:${card.name}`;
+      const usageState = await stateStore.get(usageKey);
+      const usageCount = (usageState?.['count'] as number) ?? 0;
+      await stateStore.set(usageKey, { count: usageCount + 1 });
+
+      // Build response content
+      const content: Array<
+        | { type: 'text'; text: string }
+        | { type: 'image'; data: string; mimeType: string }
+      > = [];
+
+      // Text output (readable summary for chat clients)
       if (result.textOutput) {
         content.push({ type: 'text' as const, text: result.textOutput });
       }
+
+      // Screenshot (rendered card image)
+      if (enableScreenshots) {
+        const imageBuffer = await renderHtmlToImage(result.html);
+        if (imageBuffer) {
+          content.push({
+            type: 'image' as const,
+            data: imageBuffer.toString('base64'),
+            mimeType: 'image/png',
+          });
+        }
+      }
+
+      // Raw HTML (for MCP Apps-compatible clients or fallback)
       content.push({ type: 'text' as const, text: result.html });
 
       return { content };
@@ -187,6 +219,53 @@ function registerActionTools(
       }
     );
   }
+}
+
+/**
+ * Register a `do-list` tool that lists available cards sorted by usage.
+ */
+function registerListTool(
+  server: McpServer,
+  cards: CardDefinition[],
+  stateStore: StateStore
+) {
+  server.tool(
+    'do-list',
+    'List all available #do/ cards, sorted by most used',
+    {},
+    async () => {
+      // Gather usage counts
+      const cardsWithUsage = await Promise.all(
+        cards.map(async (card) => {
+          const usageKey = `usage:${card.name}`;
+          const usageState = await stateStore.get(usageKey);
+          const count = (usageState?.['count'] as number) ?? 0;
+          const tag = card.name.startsWith('do-')
+            ? `#do/${card.name.slice(3)}`
+            : `#${card.name}`;
+          return { card, tag, count };
+        })
+      );
+
+      // Sort by usage (descending), then alphabetically
+      cardsWithUsage.sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.tag.localeCompare(b.tag);
+      });
+
+      const lines = cardsWithUsage.map(({ card, tag, count }) => {
+        const inputs = Object.keys(card.inputs).join(', ');
+        const usageLabel = count > 0 ? ` (used ${count}x)` : '';
+        return `**${tag}**${usageLabel}\n  ${card.description}\n  Inputs: ${inputs || 'none'}`;
+      });
+
+      const text = `Available #do/ cards:\n\n${lines.join('\n\n')}`;
+
+      return {
+        content: [{ type: 'text' as const, text }],
+      };
+    }
+  );
 }
 
 /**

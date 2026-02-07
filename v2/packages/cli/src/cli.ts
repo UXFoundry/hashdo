@@ -14,6 +14,7 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import { type CardDefinition, renderCard } from '@hashdo/core';
 import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
+import { warmupBrowser } from '@hashdo/screenshot';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'serve';
@@ -234,11 +235,16 @@ async function cmdStart() {
     cardDirs[card.name] = dir;
   }
 
+  // Pre-launch Chromium for screenshot rendering
+  console.log('[hashdo] Warming up screenshot renderer...');
+  await warmupBrowser();
+
   const mcpOptions = {
     name: 'hashdo-cards',
     version: '2.0.0-alpha.1',
     cards: discovered.map((d) => d.card),
     cardDirs,
+    enableScreenshots: true,
   };
 
   const server = createServer(async (req, res) => {
