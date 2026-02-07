@@ -85,8 +85,14 @@ export default defineCard({
       url.searchParams.set('forecast_days', '1');
 
       const res = await fetch(url.toString());
+      if (!res.ok) {
+        throw new Error(`Open-Meteo API ${res.status}: ${res.statusText}`);
+      }
       const data = (await res.json()) as any;
       const current = data.current;
+      if (!current) {
+        throw new Error('No weather data returned');
+      }
       const daily = data.daily;
 
       weather = {
@@ -101,17 +107,9 @@ export default defineCard({
         sunrise: daily?.sunrise?.[0],
         sunset: daily?.sunset?.[0],
       };
-    } catch {
-      weather = {
-        temperature: 22,
-        feelsLike: 20,
-        humidity: 65,
-        windSpeed: 12,
-        weatherCode: 1,
-        uvIndex: 3,
-        high: 25,
-        low: 18,
-      };
+    } catch (err) {
+      console.error(`[weather] ${err instanceof Error ? err.message : err}`);
+      throw new Error(`Failed to fetch weather data. The API may be unavailable — try again in a moment.`);
     }
 
     const { icon, condition } = weatherCodeToDescription(weather.weatherCode);

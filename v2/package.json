@@ -6,7 +6,7 @@
     "demo-cards/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspace=packages/core --workspace=packages/mcp-adapter && npm run build --workspaces --if-present",
     "dev": "npm run dev --workspace=packages/cli"
   },
   "engines": {

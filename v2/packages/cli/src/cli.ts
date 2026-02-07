@@ -67,10 +67,12 @@ Examples:
  * Looks for directories containing card.ts or card.js files.
  */
 async function discoverCards(
-  dir: string
+  dir: string,
+  bustCache = false
 ): Promise<{ card: CardDefinition; dir: string }[]> {
   const cards: { card: CardDefinition; dir: string }[] = [];
   const entries = await readdir(dir);
+  const cacheBuster = bustCache ? `?t=${Date.now()}` : '';
 
   for (const entry of entries) {
     const entryPath = join(dir, entry);
@@ -82,7 +84,7 @@ async function discoverCards(
         const cardPath = join(entryPath, cardFile);
         try {
           await stat(cardPath);
-          const mod = await import(cardPath);
+          const mod = await import(cardPath + cacheBuster);
           const cardDef = mod.default || mod;
           if (cardDef && cardDef.name && cardDef.inputs && cardDef.getData) {
             cards.push({ card: cardDef, dir: entryPath });
@@ -131,17 +133,20 @@ async function cmdPreview() {
     10
   );
 
-  const discovered = await discoverCards(targetDir);
+  // Initial discovery to validate the directory
+  const initial = await discoverCards(targetDir);
 
-  if (discovered.length === 0) {
+  if (initial.length === 0) {
     console.error(`No cards found in ${targetDir}`);
     process.exit(1);
   }
 
-  const cardMap = new Map(discovered.map((d) => [d.card.name, d]));
-
   const server = createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://localhost:${port}`);
+
+    // Re-discover cards on every request (hot reload)
+    const discovered = await discoverCards(targetDir, true);
+    const cardMap = new Map(discovered.map((d) => [d.card.name, d]));
 
     // Index page — list all cards
     if (url.pathname === '/') {
@@ -195,8 +200,8 @@ async function cmdPreview() {
 
   server.listen(port, () => {
     console.log(`[hashdo] Preview server running at http://localhost:${port}`);
-    console.log(`[hashdo] ${discovered.length} card(s) available:`);
-    for (const { card } of discovered) {
+    console.log(`[hashdo] ${initial.length} card(s) available:`);
+    for (const { card } of initial) {
       console.log(`  - http://localhost:${port}/card/${card.name}`);
     }
   });
