@@ -521,6 +521,7 @@ function renderIndex(cards: CardDefinition[]): string {
     'do-stock':   { icon: '\uD83D\uDCC8', color: '#30D158', glow: 'rgba(48,209,88,0.15)' },
     'do-crypto':  { icon: '\uD83E\uDE99', color: '#FF9F0A', glow: 'rgba(255,159,10,0.15)' },
     'do-qr':      { icon: '\u2B21', color: '#BF5AF2', glow: 'rgba(191,90,242,0.15)' },
+    'do-city':    { icon: '\uD83C\uDF0D', color: '#FF6B35', glow: 'rgba(255,107,53,0.15)' },
   };
   const fallbackMeta = { icon: '\u26A1', color: '#6b6b80', glow: 'rgba(107,107,128,0.15)' };
 
@@ -870,6 +871,7 @@ const PRIVACY_POLICY = `
   <li><strong>Weather</strong> — <a href="https://open-meteo.com/en/terms">Open-Meteo</a> (weather data), <a href="https://ip-api.com/">ip-api.com</a> (geolocation)</li>
   <li><strong>Stocks</strong> — <a href="https://www.yahoo.com/privacy">Yahoo Finance</a></li>
   <li><strong>Crypto</strong> — <a href="https://www.coingecko.com/en/privacy">CoinGecko</a></li>
+  <li><strong>City Explorer</strong> — <a href="https://restcountries.com">REST Countries</a> (country data)</li>
 </ul>
 
 <h2>Data Retention</h2>
