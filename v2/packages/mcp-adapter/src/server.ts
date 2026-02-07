@@ -56,29 +56,50 @@ const WIDGET_HTML = `<!DOCTYPE html>
 </head>
 <body>
 <div id="card"></div>
-<script type="module">
-// Render card HTML into the DOM
-function render(html) {
-  if (html) document.getElementById('card').innerHTML = html;
-}
+<script>
+// Inline MCP Apps protocol — no CDN dependency needed.
+// Implements the ui/initialize handshake + tool-result listener.
+(function() {
+  var host = window.parent;
+  var reqId = 1;
 
-// 1. MCP Apps standard: use App class from ext-apps SDK
-import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@1';
-const app = new App({ name: 'HashDo Card', version: '1.0.0' });
-app.ontoolresult = (result) => {
-  render(result._meta?.html);
-};
-app.connect();
+  function send(msg) { host.postMessage(msg, '*'); }
 
-// 2. ChatGPT native fallback: listen for raw postMessage JSON-RPC
-window.addEventListener('message', (event) => {
-  if (event.source !== window.parent) return;
-  const msg = event.data;
-  if (!msg || msg.jsonrpc !== '2.0') return;
-  if (msg.method !== 'ui/notifications/tool-result') return;
-  const p = msg.params || {};
-  render(p._meta?.html);
-}, { passive: true });
+  function render(html) {
+    if (html) document.getElementById('card').innerHTML = html;
+  }
+
+  // Listen for all host messages
+  window.addEventListener('message', function(event) {
+    if (event.source !== host) return;
+    var msg = event.data;
+    if (!msg) return;
+
+    // Handle ui/initialize response (has result.protocolVersion)
+    if (msg.id && msg.result && msg.result.protocolVersion) {
+      send({ jsonrpc: '2.0', method: 'ui/notifications/initialized', params: {} });
+      return;
+    }
+
+    // Handle tool result notification
+    if (msg.method === 'ui/notifications/tool-result' && msg.params) {
+      render(msg.params._meta ? msg.params._meta.html : null);
+      return;
+    }
+  });
+
+  // Send ui/initialize request to start the handshake
+  send({
+    jsonrpc: '2.0',
+    id: reqId++,
+    method: 'ui/initialize',
+    params: {
+      protocolVersion: '2026-01-26',
+      appInfo: { name: 'HashDo Card', version: '1.0.0' },
+      appCapabilities: {}
+    }
+  });
+})();
 </script>
 </body>
 </html>`;
@@ -117,7 +138,7 @@ export function createMcpCardServer(options: McpCardServerOptions) {
           ui: {
             domain: 'hashdo',
             csp: {
-              resourceDomains: ['esm.sh'],
+              resourceDomains: [],
               connectDomains: [],
             },
           },
