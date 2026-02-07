@@ -14,7 +14,8 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import { type CardDefinition, renderCard } from '@hashdo/core';
 import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
-import { warmupBrowser } from '@hashdo/screenshot';
+import { warmupBrowser, renderHtmlToImage } from '@hashdo/screenshot';
+import { generateOpenApiSpec } from './openapi.js';
 
 const args = process.argv.slice(2);
 const command = args[0] || 'serve';
@@ -214,6 +215,35 @@ async function cmdPreview() {
   });
 }
 
+/** Read and parse a JSON request body. Returns {} for empty bodies. */
+function readJsonBody(req: import('node:http').IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf-8');
+      if (!raw || raw.trim() === '') { resolve({}); return; }
+      try {
+        const parsed = JSON.parse(raw);
+        resolve(typeof parsed === 'object' && parsed !== null ? parsed : {});
+      } catch { reject(new Error('Invalid JSON body')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+/** Parse query params with type coercion for numbers and booleans. */
+function parseInputsFromParams(searchParams: URLSearchParams): Record<string, unknown> {
+  const inputs: Record<string, unknown> = {};
+  for (const [key, value] of searchParams) {
+    if (value === 'true') inputs[key] = true;
+    else if (value === 'false') inputs[key] = false;
+    else if (!isNaN(Number(value)) && value !== '') inputs[key] = Number(value);
+    else inputs[key] = value;
+  }
+  return inputs;
+}
+
 async function cmdStart() {
   const port = parseInt(
     process.env.PORT ??
@@ -263,6 +293,119 @@ async function cmdStart() {
       return;
     }
 
+    // --- REST API routes (for ChatGPT GPT Actions) ---
+
+    const corsHeaders: Record<string, string> = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+
+    if (req.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      res.writeHead(204, corsHeaders);
+      res.end();
+      return;
+    }
+
+    // GET /api/openapi.json
+    if (url.pathname === '/api/openapi.json' && req.method === 'GET') {
+      const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${port}`;
+      const spec = generateOpenApiSpec(discovered, baseUrl);
+      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(spec, null, 2));
+      return;
+    }
+
+    // GET /api/cards
+    if (url.pathname === '/api/cards' && req.method === 'GET') {
+      const cardList = discovered.map(({ card }) => {
+        const tag = card.name.startsWith('do-')
+          ? `#do/${card.name.slice(3)}`
+          : `#${card.name}`;
+        return {
+          name: card.name,
+          tag,
+          description: card.description,
+          inputs: Object.fromEntries(
+            Object.entries(card.inputs).map(([name, def]) => [
+              name,
+              { type: def.type, description: def.description, required: def.required ?? false },
+            ])
+          ),
+        };
+      });
+      res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(cardList));
+      return;
+    }
+
+    // GET /api/cards/:name/image?params — render card as PNG
+    const imageMatch = url.pathname.match(/^\/api\/cards\/([^/]+)\/image$/);
+    if (imageMatch && req.method === 'GET') {
+      const entry = cardMap.get(imageMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Card not found: ${imageMatch[1]}` }));
+        return;
+      }
+      try {
+        const inputs = parseInputsFromParams(url.searchParams);
+        const result = await renderCard(entry.card, inputs as any, {}, entry.dir);
+        const imageBuffer = await renderHtmlToImage(result.html);
+        if (!imageBuffer) {
+          res.writeHead(503, { ...corsHeaders, 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Screenshot renderer unavailable' }));
+          return;
+        }
+        res.writeHead(200, {
+          ...corsHeaders,
+          'Content-Type': 'image/png',
+          'Content-Length': String(imageBuffer.length),
+          'Cache-Control': 'public, max-age=60',
+        });
+        res.end(imageBuffer);
+      } catch (err: any) {
+        res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /api/cards/:name — execute card, return JSON
+    const apiCardMatch = url.pathname.match(/^\/api\/cards\/([^/]+)$/);
+    if (apiCardMatch && req.method === 'POST') {
+      const entry = cardMap.get(apiCardMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Card not found: ${apiCardMatch[1]}` }));
+        return;
+      }
+      let inputs: Record<string, unknown>;
+      try {
+        inputs = await readJsonBody(req);
+      } catch {
+        res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON request body' }));
+        return;
+      }
+      try {
+        const result = await renderCard(entry.card, inputs as any, {}, entry.dir);
+        const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${port}`;
+        const imageParams = new URLSearchParams();
+        for (const [key, value] of Object.entries(inputs)) {
+          if (value !== undefined && value !== null) imageParams.set(key, String(value));
+        }
+        imageParams.set('_t', String(Date.now()));
+        const imageUrl = `${baseUrl}/api/cards/${entry.card.name}/image?${imageParams.toString()}`;
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ card: entry.card.name, text: result.textOutput ?? '', imageUrl }));
+      } catch (err: any) {
+        res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // Index page
     if (url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -306,6 +449,8 @@ async function cmdStart() {
   server.listen(port, () => {
     console.log(`[hashdo] Production server running at http://localhost:${port}`);
     console.log(`[hashdo] MCP endpoint: http://localhost:${port}/mcp`);
+    console.log(`[hashdo] REST API: http://localhost:${port}/api/cards`);
+    console.log(`[hashdo] OpenAPI spec: http://localhost:${port}/api/openapi.json`);
     console.log(`[hashdo] ${discovered.length} card(s) available:`);
     for (const { card } of discovered) {
       console.log(`  - http://localhost:${port}/card/${card.name}`);
