@@ -113,6 +113,15 @@ export function createMcpCardServer(options: McpCardServerOptions) {
         uri: WIDGET_RESOURCE_URI,
         mimeType: RESOURCE_MIME_TYPE,
         text: WIDGET_HTML,
+        _meta: {
+          ui: {
+            domain: 'hashdo',
+            csp: {
+              resourceDomains: ['esm.sh'],
+              connectDomains: [],
+            },
+          },
+        },
       }],
     }),
   );
