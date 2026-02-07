@@ -406,6 +406,13 @@ async function cmdStart() {
       return;
     }
 
+    // Favicon
+    if (url.pathname === '/favicon.svg') {
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+      res.end(FAVICON_SVG);
+      return;
+    }
+
     // Privacy policy
     if (url.pathname === '/privacy') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -530,6 +537,7 @@ function renderIndex(cards: CardDefinition[]): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HashDo \u2014 Live Data Cards for AI</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -596,10 +604,10 @@ function renderIndex(cards: CardDefinition[]): string {
     .card-chips{display:flex;flex-wrap:wrap;gap:6px}
     .chip{
       font-family:var(--mono);font-size:11px;font-weight:400;
-      color:var(--dim);background:rgba(255,255,255,0.04);
-      padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,0.04);
+      color:var(--muted);background:rgba(255,255,255,0.06);
+      padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,0.08);
     }
-    .chip-act{color:var(--accent);border-color:rgba(255,255,255,0.06)}
+    .chip-act{color:var(--accent);border-color:rgba(255,255,255,0.1)}
 
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
@@ -678,6 +686,7 @@ function renderPreviewPage(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${card.name} — HashDo Preview</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 40px 20px; }
@@ -729,6 +738,7 @@ function renderLegalPage(title: string, bodyHtml: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title} — HashDo</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -815,6 +825,8 @@ function renderLegalPage(title: string, bodyHtml: string): string {
 </body>
 </html>`;
 }
+
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><rect x="28" y="166" width="444" height="72" rx="36" fill="#0A84FF"/><rect x="28" y="262" width="444" height="72" rx="36" fill="#0A84FF"/><rect x="166" y="28" width="72" height="444" rx="36" fill="#F44336"/><rect x="262" y="28" width="72" height="444" rx="36" fill="#F44336"/></svg>`;
 
 const PRIVACY_POLICY = `
 <p class="updated">Last updated: February 7, 2026</p>
