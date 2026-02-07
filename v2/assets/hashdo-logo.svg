@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <!--
+    HashDo logo: two red vertical bars + two blue horizontal bars
+    forming a # symbol with multiply blend on overlap.
+  -->
+  <style>
+    .bar { mix-blend-mode: multiply; }
+  </style>
+
+  <!-- Horizontal blue bars (behind) -->
+  <rect class="bar" x="28" y="166" width="444" height="72" rx="36" fill="#0A84FF"/>
+  <rect class="bar" x="28" y="262" width="444" height="72" rx="36" fill="#0A84FF"/>
+
+  <!-- Vertical red bars (in front) -->
+  <rect class="bar" x="166" y="28" width="72" height="444" rx="36" fill="#F44336"/>
+  <rect class="bar" x="262" y="28" width="72" height="444" rx="36" fill="#F44336"/>
+</svg>
