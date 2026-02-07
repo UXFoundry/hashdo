@@ -66,7 +66,7 @@ function render(html) {
 import { App } from 'https://esm.sh/@modelcontextprotocol/ext-apps@1';
 const app = new App({ name: 'HashDo Card', version: '1.0.0' });
 app.ontoolresult = (result) => {
-  render(result._meta?.html ?? result.structuredContent?.html);
+  render(result._meta?.html);
 };
 app.connect();
 
@@ -77,7 +77,7 @@ window.addEventListener('message', (event) => {
   if (!msg || msg.jsonrpc !== '2.0') return;
   if (msg.method !== 'ui/notifications/tool-result') return;
   const p = msg.params || {};
-  render(p._meta?.html ?? p.structuredContent?.html);
+  render(p._meta?.html);
 }, { passive: true });
 </script>
 </body>
@@ -244,8 +244,8 @@ function registerCardTool(
 
       return {
         content,
-        // viewModel + html visible to both model and widget
-        structuredContent: { ...result.viewModel, html: result.html },
+        // viewModel visible to both model and widget (no raw HTML — breaks ChatGPT React hydration)
+        structuredContent: result.viewModel,
         // HTML only visible to widget (not the model)
         _meta: { html: result.html },
       };
