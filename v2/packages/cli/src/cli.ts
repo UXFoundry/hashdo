@@ -677,8 +677,8 @@ function renderIndex(cards: CardDefinition[]): string {
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
       --bg:#08080D;--surface:#111118;--surface-h:#191922;
-      --bdr:rgba(255,255,255,0.06);--bdr-h:rgba(255,255,255,0.1);
-      --text:#e4e4ec;--muted:#7a7a90;--dim:#44445a;
+      --bdr:rgba(255,255,255,0.10);--bdr-h:rgba(255,255,255,0.18);
+      --text:#e4e4ec;--muted:#9d9db4;--dim:#6a6a82;
       --red:#F44336;--blue:#0A84FF;
       --font:'Outfit',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
     }
@@ -723,8 +723,8 @@ function renderIndex(cards: CardDefinition[]): string {
     .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--dim);pointer-events:none;font-size:16px}
     .no-results{text-align:center;color:var(--dim);padding:40px 0;font-size:15px;display:none}
 
-    /* ── Nav links ────────────────────────────────── */
-    .nav-links{display:flex;justify-content:center;gap:24px;margin-bottom:48px}
+    /* ── Top nav ──────────────────────────────────── */
+    .top-nav{position:fixed;top:0;right:0;display:flex;gap:16px;padding:20px 24px;z-index:10}
     .nav-link{
       font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;
       padding:6px 14px;border-radius:8px;border:1px solid var(--bdr);
@@ -780,6 +780,11 @@ function renderIndex(cards: CardDefinition[]): string {
   </style>
 </head>
 <body>
+  <nav class="top-nav">
+    <a href="/docs" class="nav-link">Developer Docs</a>
+    <a href="/editor" class="nav-link">Card Editor</a>
+    <a href="https://github.com/UXFoundry/hashdo" class="nav-link">GitHub</a>
+  </nav>
   <main>
     <section class="hero">
       <div class="logo">
@@ -799,12 +804,6 @@ function renderIndex(cards: CardDefinition[]): string {
         <span class="cursor"></span>
       </div>
     </section>
-
-    <nav class="nav-links">
-      <a href="/docs" class="nav-link">Developer Docs</a>
-      <a href="/editor" class="nav-link">Card Editor</a>
-      <a href="https://github.com/UXFoundry/hashdo" class="nav-link">GitHub</a>
-    </nav>
 
     <p class="cards-label">Available Cards</p>
     <div class="search-wrap">
@@ -1473,8 +1472,19 @@ async function executeEditorCard(
 
   try {
     // The editor code should end with `card;` or be a plain object.
-    // We wrap in an async IIFE that returns the last expression.
-    const wrappedCode = `(async () => { ${code}\n })()`;
+    // We wrap in an async IIFE. To make the last expression the return
+    // value, we prepend `return` to the final non-empty/non-comment line.
+    const lines = code.split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const trimmed = lines[i].trim();
+      if (trimmed && !trimmed.startsWith('//')) {
+        if (!trimmed.startsWith('return ')) {
+          lines[i] = lines[i].replace(trimmed, `return ${trimmed}`);
+        }
+        break;
+      }
+    }
+    const wrappedCode = `(async () => { ${lines.join('\n')}\n })()`;
     cardDef = await eval(wrappedCode);
   } catch (err: any) {
     throw new Error(`Code evaluation failed: ${err.message}`);
