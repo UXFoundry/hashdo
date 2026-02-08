@@ -24,7 +24,7 @@ export interface McpCardServerOptions {
   /** Server version */
   version: string;
   /** Cards to expose as tools */
-  cards: CardDefinition[];
+  cards: CardDefinition<any>[];
   /** State storage backend (defaults to in-memory) */
   stateStore?: StateStore;
   /** Absolute paths to card directories (for resolving templates), keyed by card name */

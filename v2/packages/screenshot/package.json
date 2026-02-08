@@ -16,11 +16,11 @@
     "build": "tsc"
   },
   "dependencies": {
-    "puppeteer-core": "^24.0.0"
+    "puppeteer-core": "24.37.2"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "25.2.2",
+    "typescript": "5.9.3"
   },
   "license": "MIT"
 }
