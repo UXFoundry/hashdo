@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-city-explorer",
+  "version": "1.0.0",
+  "description": "Interactive city explorer with points of interest, weather, and local info",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}
