@@ -9,11 +9,13 @@ export default defineCard({
     question: {
       type: 'string',
       required: true,
+      default: 'What is your favorite option?',
       description: 'The poll question to ask (e.g. "What is your favorite language?")',
     },
     options: {
       type: 'string',
       required: true,
+      default: 'Option A, Option B, Option C',
       description:
         'Comma-separated list of options (e.g. "TypeScript, Python, Rust, Go")',
     },
@@ -186,54 +188,23 @@ export default defineCard({
       pct: number;
       color: string;
     }>;
-    const totalVotes = vm.totalVotes as number;
-    const voterCount = vm.voterCount as number;
     const closed = vm.closed as boolean;
     const question = vm.question as string;
+    const checkSvg = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     const optionRows = options
       .map(
         (opt, i) => `
-      <div
-        class="poll-option ${closed ? 'closed' : ''}"
-        data-index="${i}"
-        style="
-          border: 2px solid ${closed ? '#e5e7eb' : opt.color + '33'};
-          border-radius: 12px;
-          padding: 14px 16px;
-          margin-bottom: 10px;
-          cursor: ${closed ? 'default' : 'pointer'};
-          transition: all 0.2s ease;
-          position: relative;
-          overflow: hidden;
-        "
-        ${closed ? '' : `onmouseenter="this.style.borderColor='${opt.color}'; this.style.transform='translateX(2px)'" onmouseleave="this.style.borderColor='${opt.color}33'; this.style.transform='none'"`}
-      >
-        <!-- Background bar -->
-        <div style="
-          position: absolute; top: 0; left: 0; bottom: 0;
-          width: ${opt.pct}%;
-          background: ${opt.color}11;
-          transition: width 0.6s ease;
-        "></div>
-
-        <div style="position: relative; display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="
-              width: 22px; height: 22px; border-radius: 50%;
-              border: 2px solid ${opt.color};
-              display: flex; align-items: center; justify-content: center;
-              flex-shrink: 0;
-              background: ${opt.count > 0 ? opt.color : 'transparent'};
-              transition: background 0.2s ease;
-            ">
-              ${opt.count > 0 ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
-            </div>
-            <span style="font-size: 15px; font-weight: 500; color: #1f2937;">${opt.name}</span>
+      <div class="poll-option" data-index="${i}" data-color="${opt.color}" data-name="${opt.name}">
+        <div class="poll-bar" data-bar></div>
+        <div class="poll-content">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="poll-dot" data-dot>${checkSvg}</div>
+            <span style="font-size:15px;font-weight:500;color:#1f2937">${opt.name}</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 14px; font-weight: 600; color: ${opt.color};">${opt.pct}%</span>
-            <span style="font-size: 12px; color: #9ca3af;">(${opt.count})</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="poll-pct" data-pct style="color:${opt.color}">0%</span>
+            <span class="poll-count" data-count style="font-size:12px;color:#9ca3af">(0)</span>
           </div>
         </div>
       </div>`
@@ -241,57 +212,90 @@ export default defineCard({
       .join('');
 
     return `
-    <div style="
-      font-family: 'SF Pro Display', system-ui, -apple-system, sans-serif;
-      max-width: 400px;
-      background: #ffffff;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    ">
-      <!-- Header -->
-      <div style="
-        padding: 24px 24px 20px;
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-        color: white;
-      ">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+    <div class="poll-card" data-closed="${closed}">
+      <style>
+        .poll-card{font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;max-width:400px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+        .poll-header{padding:24px 24px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+        .poll-option{border:2px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+        .poll-option:hover{transform:translateX(2px)}
+        .poll-card[data-closed="true"] .poll-option{cursor:default}
+        .poll-card[data-closed="true"] .poll-option:hover{transform:none}
+        .poll-bar{position:absolute;top:0;left:0;bottom:0;width:0;transition:width .6s ease}
+        .poll-content{position:relative;display:flex;align-items:center;justify-content:space-between}
+        .poll-dot{width:22px;height:22px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;transition:background .2s}
+        .poll-dot svg{opacity:0;transition:opacity .2s}
+        .poll-dot.voted{background:var(--c);border-color:var(--c)}
+        .poll-dot.voted svg{opacity:1}
+        .poll-pct{font-size:14px;font-weight:600}
+        .poll-footer{padding:14px 24px;background:#f9fafb;border-top:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center}
+        .poll-footer span{font-size:13px;color:#6b7280;font-weight:500}
+        .poll-footer .poll-voters{font-size:12px;color:#9ca3af;font-weight:400}
+      </style>
+      <div class="poll-header">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="12" width="4" height="9" rx="1" fill="white" opacity="0.7"/>
             <rect x="10" y="7" width="4" height="14" rx="1" fill="white" opacity="0.85"/>
             <rect x="17" y="3" width="4" height="18" rx="1" fill="white"/>
           </svg>
-          <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85;">
+          <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;opacity:.85" data-status>
             ${closed ? 'Poll Closed' : 'Live Poll'}
           </span>
         </div>
-        <div style="font-size: 20px; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em;">
-          ${question}
-        </div>
+        <div style="font-size:20px;font-weight:700;line-height:1.3;letter-spacing:-.01em">${question}</div>
       </div>
+      <div style="padding:20px 20px 8px" data-options>${optionRows}</div>
+      <div class="poll-footer">
+        <span data-total>0 votes</span>
+        <span class="poll-voters"><span data-voters>0</span> voter${closed ? ' &middot; Final results' : ''}</span>
+      </div>
+      <script>
+        (function(){
+          var root = document.currentScript.closest('.poll-card');
+          var isClosed = root.dataset.closed === 'true';
+          var opts = root.querySelectorAll('.poll-option');
+          var colors = [];
+          var counts = [];
+          var voters = 0;
 
-      <!-- Options -->
-      <div style="padding: 20px 20px 8px;">
-        ${optionRows}
-      </div>
+          opts.forEach(function(el, i) {
+            colors[i] = el.dataset.color;
+            counts[i] = 0;
+            el.style.borderColor = colors[i] + '33';
+            var dot = el.querySelector('[data-dot]');
+            dot.style.borderColor = colors[i];
+            dot.style.setProperty('--c', colors[i]);
+          });
 
-      <!-- Footer -->
-      <div style="
-        padding: 14px 24px;
-        background: #f9fafb;
-        border-top: 1px solid #f3f4f6;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      ">
-        <span style="font-size: 13px; color: #6b7280; font-weight: 500;">
-          ${totalVotes} vote${totalVotes !== 1 ? 's' : ''}
-        </span>
-        <span style="font-size: 12px; color: #9ca3af;">
-          ${voterCount} voter${voterCount !== 1 ? 's' : ''}
-          ${closed ? ' &middot; Final results' : ''}
-        </span>
-      </div>
+          function render() {
+            var total = counts.reduce(function(s, n) { return s + n; }, 0);
+            opts.forEach(function(el, i) {
+              var pct = total > 0 ? Math.round(counts[i] / total * 100) : 0;
+              el.querySelector('[data-bar]').style.width = pct + '%';
+              el.querySelector('[data-bar]').style.background = colors[i] + '11';
+              el.querySelector('[data-pct]').textContent = pct + '%';
+              el.querySelector('[data-count]').textContent = '(' + counts[i] + ')';
+              var dot = el.querySelector('[data-dot]');
+              if (counts[i] > 0) dot.classList.add('voted');
+              else dot.classList.remove('voted');
+            });
+            root.querySelector('[data-total]').textContent = total + ' vote' + (total !== 1 ? 's' : '');
+            root.querySelector('[data-voters]').textContent = voters;
+          }
+
+          render();
+
+          if (!isClosed) {
+            opts.forEach(function(el, i) {
+              el.addEventListener('click', function() {
+                counts[i]++;
+                voters++;
+                render();
+              });
+            });
+          }
+        })();
+      </script>
     </div>`;
   },
 });
