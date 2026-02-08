@@ -162,7 +162,7 @@ export interface PackDefinition {
   /** Version (semver) */
   version: string;
   /** Cards in this pack */
-  cards: CardDefinition[];
+  cards: CardDefinition<any>[];
 }
 
 // ---------------------------------------------------------------------------

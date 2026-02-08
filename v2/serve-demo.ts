@@ -49,8 +49,8 @@ async function main() {
     cards: [weatherCard, stockQuoteCard, qrCodeCard, cityExplorerCard],
     cardDirs: {
       'do-weather': join(__dirname, 'demo-cards/weather'),
-      'stock-quote': join(__dirname, 'demo-cards/stock-quote'),
-      'qr-code': join(__dirname, 'demo-cards/qr-code'),
+      'do-stock': join(__dirname, 'demo-cards/stock-quote'),
+      'do-qr': join(__dirname, 'demo-cards/qr-code'),
       'do-city': join(__dirname, 'demo-cards/city-explorer'),
     },
   });

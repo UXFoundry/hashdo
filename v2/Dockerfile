@@ -20,6 +20,7 @@ COPY demo-cards/qr-code/package.json demo-cards/qr-code/
 COPY demo-cards/stock-quote/package.json demo-cards/stock-quote/
 COPY demo-cards/weather/package.json demo-cards/weather/
 COPY demo-cards/crypto-quote/package.json demo-cards/crypto-quote/
+COPY demo-cards/city-explorer/package.json demo-cards/city-explorer/
 RUN npm install
 COPY . .
 RUN npm run build
