@@ -33,6 +33,7 @@
 import { serveMcp } from '@hashdo/mcp-adapter';
 
 import cityExplorerCard from './demo-cards/city-explorer/card.js';
+import pollCard from './demo-cards/poll/card.js';
 import qrCodeCard from './demo-cards/qr-code/card.js';
 import stockQuoteCard from './demo-cards/stock-quote/card.js';
 import weatherCard from './demo-cards/weather/card.js';
@@ -46,12 +47,13 @@ async function main() {
   await serveMcp({
     name: 'hashdo',
     version: '2.0.0-alpha.1',
-    cards: [weatherCard, stockQuoteCard, qrCodeCard, cityExplorerCard],
+    cards: [weatherCard, stockQuoteCard, qrCodeCard, cityExplorerCard, pollCard],
     cardDirs: {
       'do-weather': join(__dirname, 'demo-cards/weather'),
       'stock-quote': join(__dirname, 'demo-cards/stock-quote'),
       'qr-code': join(__dirname, 'demo-cards/qr-code'),
       'do-city': join(__dirname, 'demo-cards/city-explorer'),
+      'do-poll': join(__dirname, 'demo-cards/poll'),
     },
   });
 }

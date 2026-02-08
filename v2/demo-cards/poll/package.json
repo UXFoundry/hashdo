@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-poll",
+  "version": "1.0.0",
+  "description": "Create interactive polls and collect votes",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}
