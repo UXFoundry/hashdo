@@ -13,6 +13,7 @@ HashDo turns live data into rich, interactive cards that work inside AI conversa
 | `#do/crypto` | do-crypto | Cryptocurrency price, 24h change, and market cap |
 | `#do/qr` | do-qr | Generate a QR code from text or a URL |
 | `#do/city` | do-city | City explorer — weather, local time, population, currency, and languages |
+| `#do/poll` | do-poll | Interactive poll with live voting, percentages, and results |
 
 ## Quick Start
 
@@ -74,7 +75,8 @@ v2/
 │   ├── stock-quote/    # do-stock
 │   ├── crypto-quote/   # do-crypto
 │   ├── qr-code/        # do-qr
-│   └── city-explorer/  # do-city
+│   ├── city-explorer/  # do-city
+│   └── poll/           # do-poll
 ├── serve-demo.ts       # Standalone MCP stdio server
 └── Dockerfile          # Production image (Node 20 + Chromium)
 ```

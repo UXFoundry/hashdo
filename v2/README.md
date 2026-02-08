@@ -9,13 +9,18 @@ Write once, serve as MCP tools in ChatGPT, Claude, VS Code, or any MCP-compatibl
 v2/
 ├── packages/
 │   ├── core/           # Card spec, types, renderer
-│   ├── mcp-adapter/    # Turns cards into MCP tools (Zod schemas, stdio transport)
-│   └── cli/            # CLI: serve (MCP), preview (HTTP), list
+│   ├── mcp-adapter/    # MCP server with Apps widget support
+│   ├── screenshot/     # HTML → PNG via Puppeteer
+│   └── cli/            # HTTP server, card discovery, dev tools
 ├── demo-cards/
-│   ├── weather/        # Open-Meteo weather conditions
-│   ├── stock-quote/    # Stock price with watchlist + alerts
-│   └── qr-code/       # QR code generator
-└── serve-demo.ts       # Entry point: all demo cards as one MCP server
+│   ├── weather/        # do-weather — current conditions + auto-location
+│   ├── stock-quote/    # do-stock — stock price + daily change
+│   ├── crypto-quote/   # do-crypto — crypto price + market cap
+│   ├── qr-code/        # do-qr — QR code generator
+│   ├── city-explorer/  # do-city — city info mashup
+│   └── poll/           # do-poll — interactive poll with live voting
+├── serve-demo.ts       # Standalone MCP stdio server
+└── Dockerfile          # Production image (Node 20 + Chromium)
 ```
 
 ## Quick Start
@@ -28,8 +33,8 @@ npm run build
 # Start MCP server (stdio) with demo cards
 npx tsx serve-demo.ts
 
-# Preview cards in browser
-npx tsx packages/cli/src/cli.ts preview demo-cards
+# Start HTTP server with web UI, API, and MCP endpoint
+node packages/cli/dist/cli.js start demo-cards
 ```
 
 ## Defining a Card
@@ -38,7 +43,7 @@ npx tsx packages/cli/src/cli.ts preview demo-cards
 import { defineCard } from '@hashdo/core';
 
 export default defineCard({
-  name: 'my-card',
+  name: 'do-example',
   description: 'Used by LLMs to decide when to invoke this tool',
 
   inputs: {
@@ -69,7 +74,7 @@ Each card automatically becomes:
 
 ## MCP Integration
 
-Add to `claude_desktop_config.json`:
+**Claude Desktop** — add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -97,21 +102,24 @@ Add to `claude_desktop_config.json`:
 
 ### @hashdo/core
 - `defineCard()` — Type-safe card definition with full inference
-- `renderCard()` — Render a card to HTML given inputs + state
+- `renderCard()` — Render a card to HTML given inputs + state (applies input defaults automatically)
 - `MemoryStateStore` — In-memory state (swap for Redis/Postgres in production)
 - Full TypeScript types for inputs, actions, state, webhooks
 
 ### @hashdo/mcp-adapter
 - `serveMcp()` — Start an MCP stdio server from card definitions
 - `createMcpCardServer()` — Create server programmatically
+- MCP Apps protocol with shared widget for interactive card rendering
 - Automatic Zod schema generation from card input definitions
 - State management across tool invocations
 
+### @hashdo/screenshot
+- `renderHtmlToImage()` — Render card HTML to PNG via Puppeteer
+- Used for image responses in clients that don't support HTML
+
 ### @hashdo/cli
 - `hashdo serve [dir]` — Start MCP server exposing cards as tools
+- `hashdo start [dir]` — Production HTTP server with REST API + MCP endpoint
 - `hashdo preview [dir]` — HTTP server for card development/preview
 - `hashdo list [dir]` — List discovered cards with inputs/actions
-
-## See Also
-
-- [ACTIONABLE_CARDS_AI_PLAN.md](../ACTIONABLE_CARDS_AI_PLAN.md) — Full strategic plan and roadmap
+- Web UI with card search, developer docs (`/docs`), and online card editor (`/editor`)
