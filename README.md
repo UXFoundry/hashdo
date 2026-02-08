@@ -1,117 +1,132 @@
-# \#Do
+# HashDo — Live Data Cards for AI
 
-\#Do is framework for creating static or stateful interaction based cards that can be embedded in mobile applications or viewed in a browser.
-This is the base library that can be used in your own projects to generate, embed or serve [\#Do cards](https://github.com/UXFoundry/hashdo-cards).
+HashDo turns live data into rich, interactive cards that work inside AI conversations. Build a card once and it becomes an MCP tool that works in ChatGPT, Claude, VS Code, and any MCP-compatible client.
 
-If you are looking for a way to create cards, get your hands on the [\#Do CLI](https://github.com/UXFoundry/hashdo-cli) which contains templates to quickly generate packs and cards as well as a test harness to easily test your card functionality.
+**Live at [hashdo.com](https://hashdo.com)**
 
-Card examples can be found here: [https://github.com/UXFoundry/hashdo-cards](https://github.com/UXFoundry/hashdo-cards) 
+## Available Cards
 
-## Getting Started
-#### Step 1
-Install \#Do into your project using NPM.
+| Tag | Card | Description |
+|-----|------|-------------|
+| `#do/weather` | do-weather | Current weather for any location with auto-detection via IP geolocation |
+| `#do/stock` | do-stock | Stock price lookup with daily change and key stats |
+| `#do/crypto` | do-crypto | Cryptocurrency price, 24h change, and market cap |
+| `#do/qr` | do-qr | Generate a QR code from text or a URL |
+| `#do/city` | do-city | City explorer — weather, local time, population, currency, and languages |
 
-`npm install hashdo --save`
+## Quick Start
 
-#### Step 2
-Require it in your code.
+```bash
+cd v2
+npm install
+npm run build
 
-`var hashdo = require('hashdo');`
+# Start MCP server (stdio) with all demo cards
+npx tsx serve-demo.ts
 
-#### Step 3
-Generate the HTML, CSS and script necessary to render your card.
+# Start HTTP server with web UI, API, and MCP endpoint
+node packages/cli/dist/cli.js start demo-cards
+```
 
-```js
-hashdo.card.generateCard({
-  url: 'http://hashdo.com/restaurants/nearby',
-  directory: '/Where/Your/Cards/Are/Located',
-  packName: 'restaurants',
-  cardName: 'nearby',
-  inputValues: {
-    latitude: -29.837795,
-    longitude: 30.922539
+The HTTP server runs on port 3000 and exposes:
+- **Web UI** — card browser with search, developer docs (`/docs`), card editor (`/editor`)
+- **REST API** — `GET /api/cards`, `POST /api/cards/:name`, `GET /api/cards/:name/image`
+- **MCP endpoint** — `POST /mcp` (Streamable HTTP)
+- **OpenAPI spec** — `GET /api/openapi.json`
+
+## MCP Client Setup
+
+**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "hashdo": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/hashdo/v2/serve-demo.ts"]
+    }
   }
-},
-// Callback containing an error or the HTML you can render.
-function (err, html) {
-  if (!err) {
-    // Do something with the HTML.
-    console.log(html);
+}
+```
+
+**Claude Code** — add to `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "hashdo": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/hashdo/v2/serve-demo.ts"]
+    }
   }
-  else {
-    console.error(err);    
-  }
+}
+```
+
+## Architecture
+
+```
+v2/
+├── packages/
+│   ├── core/           # Card types, defineCard(), renderCard()
+│   ├── mcp-adapter/    # MCP server with Apps widget support
+│   ├── screenshot/     # HTML → PNG via Puppeteer
+│   └── cli/            # HTTP server, card discovery, dev tools
+├── demo-cards/
+│   ├── weather/        # do-weather
+│   ├── stock-quote/    # do-stock
+│   ├── crypto-quote/   # do-crypto
+│   ├── qr-code/        # do-qr
+│   └── city-explorer/  # do-city
+├── serve-demo.ts       # Standalone MCP stdio server
+└── Dockerfile          # Production image (Node 20 + Chromium)
+```
+
+## Packages
+
+**[@hashdo/core](v2/packages/core/)** — Card definition types, `defineCard()` for type-safe authoring, `renderCard()` for HTML generation, Handlebars template support.
+
+**[@hashdo/mcp-adapter](v2/packages/mcp-adapter/)** — Exposes cards as MCP tools with automatic Zod schema generation. Implements MCP Apps protocol with a shared widget for interactive card rendering in supported clients.
+
+**[@hashdo/screenshot](v2/packages/screenshot/)** — Renders card HTML to PNG images using Puppeteer. Used for image responses in clients that don't support HTML.
+
+**[@hashdo/cli](v2/packages/cli/)** — HTTP server with card discovery, hot reload, REST API, MCP endpoint, usage tracking, developer docs, and an online card editor.
+
+## Defining a Card
+
+```typescript
+import { defineCard } from '@hashdo/core';
+
+export default defineCard({
+  name: 'do-example',
+  description: 'Used by LLMs to decide when to invoke this tool',
+
+  inputs: {
+    query: { type: 'string', required: true, description: 'Search query' },
+  },
+
+  async getData({ inputs }) {
+    const data = await fetchSomething(inputs.query);
+    return {
+      viewModel: { data },
+      textOutput: `Result: ${data.summary}`,
+    };
+  },
+
+  template: (vm) => `<div>${vm.data}</div>`,
 });
 ```
 
-Check out our [open source \#Do cards](https://github.com/UXFoundry/hashdo-cards) to test things out with or use the [\#Do CLI](https://github.com/UXFoundry/hashdo-cli) to create your own.
+Each card automatically becomes an MCP tool — inputs map to tool parameters, `getData()` runs server-side, and the template renders HTML returned to the client.
 
-## API
-#### Packs
-The packs module is accessible through `hashdo.packs`. This modules contains information about the packs and cards available.
+## Deployment
 
-#### Cards
-The card module is accessible through `hashdo.card`. This module is used to secure inputs, generated card HTML and also perform the logic necessary for a web hook call.
+The included Dockerfile builds a production image with Node 20 and Chromium (for screenshot rendering):
 
-## Environment Variables
+```bash
+docker build -t hashdo v2/
+docker run -p 3000:3000 hashdo
+```
 
-#### CARD_SECRET
-Provide a value for this if you want to properly secure the URL and query parameters of a card.
-
-#### LOCK_KEY
-Provide a value for this if you want to properly secure input data in the database when using 'secureInputs'.
-
-#### BASE_URL
-Required if making use of client state. This will be the URL that cards will make HTTP calls to.
-
-#### FIREBASE_URL
-Use [Firebase](https://www.firebase.com/) to update card state on the client when it changes. Without this the card will need to be refreshed manually to update it's client data.
-
-## Plugins
-Modules can be replaced by your own implementations if necessary. Good examples of this are the data store or the analytics provider you wish to use.
-
-The following plugins are available. If you have created your own plugins, let us know and we'll add links here.
-
-#### Database
-By default \#Do uses an in-memory database. Card states and locks are lost when the application unloads but this is actually great for development and testing purposes.
-
-[MongoDB Plugin](https://github.com/UXFoundry/hashdo-db-mongo) - Use this database plugin to persist your data to a [MongoDB](https://www.mongodb.org/) database.
-
-#### Analytics
-By default \#Do has no analytics implementation. When an event is triggered it will output the details to the console.
-
-[Keen IO Analytics Plugin](https://github.com/UXFoundry/hashdo-analytics-keen) - Use this analytics plugin to send events to [Keen IO](https://keen.io/).
-
-To use a plugin, simply replace the exposed property with a new implementation. Each plugin's documentation will describe the requirements and the process of replacing the functionality.
-
-## View Engine Support
-Currently \#Do supports the following view engines.
-
-- [Jade](http://jade-lang.com/)
-- [Handlebars](http://handlebarsjs.com/)
-
-Any view engine that [Consolidate](https://github.com/tj/consolidate.js) supports can be added as well if necessary. Using a view engine is not a requirement, you are welcome to use regular HTML. 
-
-## CSS Preprocessor Support
-Currently \#Do supports the following CSS preprocessors.
-
-- [SASS](http://lesscss.org/)
-- [LESS](http://sass-lang.com/)
-
-Using a preprocessor is not a requirement, you are welcome to use regular CSS.
-
+Deploys to Railway, Fly.io, or any container platform.
 
 ## License
-Copyright 2015 (c). All rights reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License"); you
-may not use this file except in compliance with the License. You may
-obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-implied. See the License for the specific language governing permissions
-and limitations under the License.
+Apache License 2.0 — see [LICENSE](LICENSE) for details.

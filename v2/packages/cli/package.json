@@ -17,8 +17,8 @@
     "@hashdo/screenshot": "2.0.0-alpha.1"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "25.2.2",
+    "typescript": "5.9.3"
   },
   "license": "MIT"
 }

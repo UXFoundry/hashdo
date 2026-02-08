@@ -1,6 +1,7 @@
 {
   "name": "hashdo-v2",
   "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*",
     "demo-cards/*"
