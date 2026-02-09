@@ -192,7 +192,7 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   );
 
   for (const card of cards) {
-    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots, connectDomains);
+    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots, connectDomains, options.baseUrl);
     registerActionTools(server, card, stateStore);
   }
 
@@ -236,7 +236,8 @@ function registerCardTool(
   stateStore: StateStore,
   cardDir: string | undefined,
   enableScreenshots: boolean,
-  connectDomains: string[]
+  connectDomains: string[],
+  baseUrl?: string
 ) {
   const zodShape = inputSchemaToZodShape(card.inputs);
 
@@ -273,7 +274,7 @@ function registerCardTool(
       const state = (await stateStore.get(cardKey)) ?? {};
 
       // Render card
-      const result = await renderCard(card, inputs, state, cardDir);
+      const result = await renderCard(card, inputs, state, cardDir, { baseUrl });
 
       // Persist updated state
       if (result.state && Object.keys(result.state).length > 0) {
