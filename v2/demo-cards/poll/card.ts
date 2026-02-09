@@ -24,11 +24,13 @@ export default defineCard({
     question: {
       type: 'string',
       required: false,
+      default: 'What is your favorite option?',
       description: 'The poll question (required when creating a new poll)',
     },
     options: {
       type: 'string',
       required: false,
+      default: 'Option A, Option B, Option C',
       description:
         'Comma-separated list of options (required when creating, e.g. "TypeScript, Python, Rust")',
     },
@@ -68,11 +70,14 @@ export default defineCard({
       );
     }
 
-    // Resolve question and options: prefer inputs, fall back to state
-    const question =
-      inputQuestion || (state.pollQuestion as string) || undefined;
-    const optionsRaw =
-      inputOptions || (state.pollOptions as string) || undefined;
+    // When opening by ID, prefer state (input values may just be schema defaults).
+    // When creating, prefer inputs.
+    const question = inputId
+      ? (state.pollQuestion as string) || inputQuestion || undefined
+      : inputQuestion || (state.pollQuestion as string) || undefined;
+    const optionsRaw = inputId
+      ? (state.pollOptions as string) || inputOptions || undefined
+      : inputOptions || (state.pollOptions as string) || undefined;
 
     if (!question || !optionsRaw) {
       if (inputId) {
