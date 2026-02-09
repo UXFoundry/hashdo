@@ -206,10 +206,11 @@ ${cardList}
 
 Behavior:
 - When the user types "#do/weather" or "#do/weather Tokyo", call the do-weather tool right away.
-- Parse any text after the command as input (e.g. "#do/weather Paris" → city: "Paris").
+- Parse any text after the command as the most likely input parameter (e.g. "#do/weather Paris" → city: "Paris", "#do/poll a1b2c3" → id: "a1b2c3").
+- When a single unlabeled argument follows a command, map it to the parameter that best matches (check descriptions). For cards with an "id" parameter, a short hex string is almost certainly the id.
 - If the tool returns text output, present it directly to the user formatted nicely.
 - You can also invoke these tools proactively when relevant to the conversation.
-- All inputs are optional unless marked required — the cards have smart defaults.
+- All inputs are optional unless marked required — the cards have smart defaults. Do NOT pass default values yourself — let the card handle defaults.
 - When the user types just "#do" or "#do/list", call the "do-list" tool to show available commands.`;
 }
 
