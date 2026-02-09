@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-game-snake",
+  "version": "1.0.0",
+  "description": "Play a classic Snake game in a card",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}

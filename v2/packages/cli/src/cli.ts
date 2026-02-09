@@ -113,6 +113,7 @@ async function discoverCards(
     const entryStat = await stat(entryPath);
 
     if (entryStat.isDirectory()) {
+      let found = false;
       // Prefer card.js (compiled) over card.ts (source)
       for (const cardFile of ['card.js', 'card.ts']) {
         const cardPath = join(entryPath, cardFile);
@@ -122,11 +123,17 @@ async function discoverCards(
           const cardDef = mod.default || mod;
           if (cardDef && cardDef.name && cardDef.inputs && cardDef.getData) {
             cards.push({ card: cardDef, dir: entryPath });
+            found = true;
             break; // Don't load both .js and .ts
           }
         } catch {
           // Not a card directory, skip
         }
+      }
+      // Recurse into category folders (e.g. game/) that don't contain a card
+      if (!found) {
+        const nested = await discoverCards(entryPath, bustCache);
+        cards.push(...nested);
       }
     }
   }
@@ -626,12 +633,14 @@ async function cmdList() {
 }
 
 function renderIndex(cards: CardDefinition[]): string {
-  const CARD_META: Record<string, { icon: string; color: string; glow: string }> = {
-    'do-weather': { icon: '\u26C5', color: '#0A84FF', glow: 'rgba(10,132,255,0.15)' },
-    'do-stock':   { icon: '\uD83D\uDCC8', color: '#30D158', glow: 'rgba(48,209,88,0.15)' },
-    'do-crypto':  { icon: '\uD83E\uDE99', color: '#FF9F0A', glow: 'rgba(255,159,10,0.15)' },
-    'do-qr':      { icon: '\u2B21', color: '#BF5AF2', glow: 'rgba(191,90,242,0.15)' },
-    'do-city':    { icon: '\uD83C\uDF0D', color: '#FF6B35', glow: 'rgba(255,107,53,0.15)' },
+  const CARD_META: Record<string, { icon: string; color: string; glow: string; tag?: string }> = {
+    'do-weather':    { icon: '\u26C5', color: '#0A84FF', glow: 'rgba(10,132,255,0.15)' },
+    'do-stock':      { icon: '\uD83D\uDCC8', color: '#30D158', glow: 'rgba(48,209,88,0.15)' },
+    'do-crypto':     { icon: '\uD83E\uDE99', color: '#FF9F0A', glow: 'rgba(255,159,10,0.15)' },
+    'do-qr':         { icon: '\u2B21', color: '#BF5AF2', glow: 'rgba(191,90,242,0.15)' },
+    'do-city':       { icon: '\uD83C\uDF0D', color: '#FF6B35', glow: 'rgba(255,107,53,0.15)' },
+    'do-game-snake':  { icon: '\uD83D\uDC0D', color: '#4ade80', glow: 'rgba(74,222,128,0.15)', tag: '#do/game/snake' },
+    'do-game-wordle': { icon: '\uD83D\uDFE9', color: '#538d4e', glow: 'rgba(83,141,78,0.15)', tag: '#do/game/wordle' },
   };
   const fallbackMeta = { icon: '\u26A1', color: '#6b6b80', glow: 'rgba(107,107,128,0.15)' };
 
@@ -639,7 +648,7 @@ function renderIndex(cards: CardDefinition[]): string {
 
   const cardList = cards.map((c, i) => {
     const meta = CARD_META[c.name] ?? fallbackMeta;
-    const tag = c.name.startsWith('do-') ? `#do/${c.name.slice(3)}` : `#${c.name}`;
+    const tag = meta.tag ?? (c.name.startsWith('do-') ? `#do/${c.name.slice(3)}` : `#${c.name}`);
     const desc = c.description.length > 100 ? c.description.slice(0, 97) + '...' : c.description;
     const inputNames = Object.keys(c.inputs).slice(0, 5);
     const chips = inputNames.map(n => `<span class="chip">${n}</span>`).join('');

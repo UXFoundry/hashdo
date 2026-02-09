@@ -4,7 +4,8 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "demo-cards/*"
+    "demo-cards/*",
+    "demo-cards/game/*"
   ],
   "scripts": {
     "build": "npm run build --workspace=packages/core --workspace=packages/screenshot --workspace=packages/mcp-adapter && npm run build --workspaces --if-present",
