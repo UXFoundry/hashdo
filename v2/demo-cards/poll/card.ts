@@ -12,7 +12,7 @@ function derivePollId(question: string, options: string): string {
 export default defineCard({
   name: 'do-poll',
   description:
-    'Create or open an interactive poll. Usage: "#do/poll" with question + options creates a new poll. "#do/poll <id>" (e.g. "#do/poll 71a1bc") opens an existing poll by its 6-character hex ID — pass the ID as the "id" parameter, do NOT pass question or options when opening by ID.',
+    'Create or open an interactive poll. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a question or options, pass them; otherwise use defaults. To open an existing poll by ID (e.g. "#do/poll 71a1bc"), pass only the "id" parameter — do NOT pass question or options when opening by ID.',
 
   inputs: {
     id: {
@@ -25,14 +25,14 @@ export default defineCard({
       type: 'string',
       required: false,
       default: 'What is your favorite option?',
-      description: 'The poll question (required when creating a new poll)',
+      description: 'The poll question. Has a sensible default — only override if the user specifies one.',
     },
     options: {
       type: 'string',
       required: false,
       default: 'Option A, Option B, Option C',
       description:
-        'Comma-separated list of options (required when creating, e.g. "TypeScript, Python, Rust")',
+        'Comma-separated list of options. Has a sensible default — only override if the user specifies options.',
     },
     allowMultiple: {
       type: 'boolean',
