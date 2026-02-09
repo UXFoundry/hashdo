@@ -10,14 +10,15 @@ import { defineCard } from '@hashdo/core';
 export default defineCard({
   name: 'do-book',
   description:
-    'Look up any book by title, author, or ISBN. Shows cover, author, publication info, and subjects. Call this when the user types #do/book or asks about a book.',
+    'Look up any book by title, author, or ISBN. Shows cover, author, publication info, and subjects. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a book, pass it; otherwise use defaults.',
 
   inputs: {
     query: {
       type: 'string',
-      required: true,
+      required: false,
+      default: 'The Great Gatsby',
       description:
-        'Book title, author name, or ISBN to search for (e.g. "The Great Gatsby", "Tolkien", "978-0451524935")',
+        'Book title, author name, or ISBN to search for. Has a sensible default — only override if the user specifies a book.',
     },
   },
 
