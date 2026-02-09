@@ -9,6 +9,7 @@
  *   hashdo list [dir]     — List all cards found in directory
  */
 
+import 'dotenv/config';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
@@ -16,6 +17,7 @@ import { type CardDefinition, renderCard } from '@hashdo/core';
 import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
 import { warmupBrowser, renderHtmlToImage } from '@hashdo/screenshot';
 import { generateOpenApiSpec } from './openapi.js';
+import { createStateStore } from './create-state-store.js';
 
 // ---------------------------------------------------------------------------
 // In-memory card usage tracking
@@ -161,11 +163,14 @@ async function cmdServe() {
     console.error(`  - ${card.name}: ${card.description}`);
   }
 
+  const stateStore = createStateStore();
+
   await serveMcp({
     name: 'hashdo-cards',
     version: '2.0.0-alpha.1',
     cards: discovered.map((d) => d.card),
     cardDirs,
+    stateStore,
   });
 }
 
@@ -341,12 +346,15 @@ async function cmdStart() {
   console.log('[hashdo] Warming up screenshot renderer...');
   await warmupBrowser();
 
+  const stateStore = createStateStore();
+
   const mcpOptions = {
     name: 'hashdo-cards',
     version: '2.0.0-alpha.1',
     cards: discovered.map((d) => d.card),
     cardDirs,
     enableScreenshots: true,
+    stateStore,
   };
 
   const server = createServer(async (req, res) => {
