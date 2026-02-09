@@ -269,7 +269,7 @@ export default defineCard({
     const optionRows = options
       .map(
         (opt, i) => `
-      <div class="poll-option" data-index="${i}" data-color="${opt.color}" data-name="${opt.name}">
+      <div class="poll-option" data-index="${i}" data-color="${opt.color}" data-name="${opt.name}" data-count="${opt.count}">
         <div class="poll-bar" data-bar></div>
         <div class="poll-content">
           <div style="display:flex;align-items:center;gap:10px">
@@ -277,8 +277,8 @@ export default defineCard({
             <span style="font-size:15px;font-weight:500;color:#1f2937">${opt.name}</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span class="poll-pct" data-pct style="color:${opt.color}">0%</span>
-            <span class="poll-count" data-count style="font-size:12px;color:#9ca3af">(0)</span>
+            <span class="poll-pct" data-pct style="color:${opt.color}">${opt.pct}%</span>
+            <span class="poll-count" data-count style="font-size:12px;color:#9ca3af">(${opt.count})</span>
           </div>
         </div>
       </div>`
@@ -286,7 +286,7 @@ export default defineCard({
       .join('');
 
     return `
-    <div class="poll-card" data-closed="${closed}" data-poll-id="${pollId}" data-api="${vm.apiBaseUrl as string}">
+    <div class="poll-card" data-closed="${closed}" data-poll-id="${pollId}" data-api="${vm.apiBaseUrl as string}" data-voter-count="${vm.voterCount as number}">
       <style>
         .poll-card{font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;max-width:400px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
         .poll-header{padding:24px 24px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
@@ -324,8 +324,8 @@ export default defineCard({
       </div>
       <div style="padding:20px 20px 8px" data-options>${optionRows}</div>
       <div class="poll-footer">
-        <span data-total>0 votes</span>
-        <span class="poll-voters"><span data-voters>0</span> voter${closed ? ' &middot; Final results' : ''}</span>
+        <span data-total>${vm.totalVotes as number} vote${(vm.totalVotes as number) !== 1 ? 's' : ''}</span>
+        <span class="poll-voters"><span data-voters>${vm.voterCount as number}</span> voter${closed ? ' &middot; Final results' : ''}</span>
       </div>
       <script>
         (function(){
@@ -335,11 +335,11 @@ export default defineCard({
           var opts = root.querySelectorAll('.poll-option');
           var colors = [];
           var counts = [];
-          var voters = 0;
+          var voters = parseInt(root.dataset.voterCount) || 0;
 
           opts.forEach(function(el, i) {
             colors[i] = el.dataset.color;
-            counts[i] = 0;
+            counts[i] = parseInt(el.dataset.count) || 0;
             el.style.borderColor = colors[i] + '33';
             var dot = el.querySelector('[data-dot]');
             dot.style.borderColor = colors[i];
