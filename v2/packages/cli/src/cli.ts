@@ -336,6 +336,7 @@ async function renderCardWithState(
   inputs: Record<string, unknown>,
   store: StateStore,
   cardDir?: string,
+  baseUrl?: string,
 ) {
   const customKey = card.stateKey?.(inputs as any);
   const cardKey = customKey
@@ -343,7 +344,7 @@ async function renderCardWithState(
     : `card:${card.name}:${stableKey(inputs)}`;
 
   const state = (await store.get(cardKey)) ?? {};
-  const result = await renderCard(card, inputs as any, state, cardDir);
+  const result = await renderCard(card, inputs as any, state, cardDir, { baseUrl });
 
   if (result.state && Object.keys(result.state).length > 0) {
     await store.set(cardKey, result.state);
@@ -485,7 +486,7 @@ async function cmdStart() {
       try {
         trackCardUsage(entry.card.name);
         const inputs = parseInputsFromParams(url.searchParams);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
         const imageBuffer = await renderHtmlToImage(result.html);
         if (!imageBuffer) {
           res.writeHead(503, { ...corsHeaders, 'Content-Type': 'application/json' });
@@ -605,7 +606,7 @@ async function cmdStart() {
       }
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
         const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${port}`;
         const imageParams = new URLSearchParams();
         for (const [key, value] of Object.entries(inputs)) {
@@ -705,7 +706,7 @@ async function cmdStart() {
 
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(renderPreviewPage(entry.card, result.html, inputs));
       } catch (err: any) {

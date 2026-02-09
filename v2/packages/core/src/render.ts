@@ -16,7 +16,9 @@ export async function renderCard<S extends InputSchema>(
   inputs: InputValues<S>,
   state: CardState,
   /** Absolute path to the directory containing the card (for resolving template files) */
-  cardDir?: string
+  cardDir?: string,
+  /** Runtime options forwarded to getData */
+  options?: { baseUrl?: string }
 ): Promise<{ html: string; state: CardState; textOutput?: string; viewModel: Record<string, unknown> }> {
   // 0. Apply defaults for any missing inputs
   const resolvedInputs = { ...inputs };
@@ -27,7 +29,7 @@ export async function renderCard<S extends InputSchema>(
   }
 
   // 1. Fetch data
-  const result = await card.getData({ inputs: resolvedInputs, state });
+  const result = await card.getData({ inputs: resolvedInputs, state, baseUrl: options?.baseUrl ?? '' });
   const newState = { ...state, ...result.state };
 
   // 2. Resolve template

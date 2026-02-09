@@ -87,6 +87,8 @@ export interface GetDataContext<S extends InputSchema = InputSchema> {
   inputs: InputValues<S>;
   /** Previously persisted card state (empty object on first render) */
   state: CardState;
+  /** Base URL of the card server (e.g. "https://app.up.railway.app"). Empty string when unknown. */
+  baseUrl: string;
 }
 
 export interface GetDataResult {

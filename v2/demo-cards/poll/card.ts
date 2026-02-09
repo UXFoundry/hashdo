@@ -51,7 +51,7 @@ export default defineCard({
     return undefined;
   },
 
-  async getData({ inputs, state }) {
+  async getData({ inputs, state, baseUrl }) {
     const inputId = inputs.id as string | undefined;
     const inputQuestion = inputs.question as string | undefined;
     const inputOptions = inputs.options as string | undefined;
@@ -147,7 +147,7 @@ export default defineCard({
         voterCount,
         closed,
         allowMultiple: inputs.allowMultiple ?? false,
-        apiBaseUrl: process.env['BASE_URL'] ?? '',
+        apiBaseUrl: baseUrl,
       },
       textOutput,
       state: {
