@@ -249,7 +249,10 @@ function registerCardTool(
     },
     async (params: Record<string, unknown>) => {
       const inputs = params as any;
-      const cardKey = `card:${card.name}:${stableKey(inputs)}`;
+      const customKey = card.stateKey?.(inputs);
+      const cardKey = customKey
+        ? `card:${card.name}:${customKey}`
+        : `card:${card.name}:${stableKey(inputs)}`;
 
       // Load existing state
       const state = (await stateStore.get(cardKey)) ?? {};
@@ -353,7 +356,10 @@ function registerActionTools(
           }
         }
 
-        const cardKey = `card:${card.name}:${stableKey(cardInputs)}`;
+        const customKey = card.stateKey?.(cardInputs as any);
+        const cardKey = customKey
+          ? `card:${card.name}:${customKey}`
+          : `card:${card.name}:${stableKey(cardInputs)}`;
         const state = (await stateStore.get(cardKey)) ?? {};
 
         const result = await action.handler({

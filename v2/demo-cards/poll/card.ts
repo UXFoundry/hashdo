@@ -1,23 +1,36 @@
+import { createHash } from 'node:crypto';
 import { defineCard } from '@hashdo/core';
+
+/** Derive a deterministic poll ID from question + options (6 hex chars). */
+function derivePollId(question: string, options: string): string {
+  return createHash('sha256')
+    .update(`${question}|${options}`)
+    .digest('hex')
+    .slice(0, 6);
+}
 
 export default defineCard({
   name: 'do-poll',
   description:
-    'Create an interactive poll or survey. Users vote on options and see live results with percentages.',
+    'Create an interactive poll or survey. Provide question + options to create a new poll (returns an id). Provide just an id to open an existing poll.',
 
   inputs: {
+    id: {
+      type: 'string',
+      required: false,
+      description:
+        'Poll ID. Omit when creating a new poll (one will be generated). Provide to open an existing poll.',
+    },
     question: {
       type: 'string',
-      required: true,
-      default: 'What is your favorite option?',
-      description: 'The poll question to ask (e.g. "What is your favorite language?")',
+      required: false,
+      description: 'The poll question (required when creating a new poll)',
     },
     options: {
       type: 'string',
-      required: true,
-      default: 'Option A, Option B, Option C',
+      required: false,
       description:
-        'Comma-separated list of options (e.g. "TypeScript, Python, Rust, Go")',
+        'Comma-separated list of options (required when creating, e.g. "TypeScript, Python, Rust")',
     },
     allowMultiple: {
       type: 'boolean',
@@ -27,9 +40,52 @@ export default defineCard({
     },
   },
 
+  stateKey: (inputs) => {
+    const id = inputs.id as string | undefined;
+    if (id) return `id:${id}`;
+    const question = inputs.question as string | undefined;
+    const options = inputs.options as string | undefined;
+    if (question && options) return `id:${derivePollId(question, options)}`;
+    return undefined;
+  },
+
   async getData({ inputs, state }) {
-    const question = inputs.question as string;
-    const optionNames = (inputs.options as string)
+    const inputId = inputs.id as string | undefined;
+    const inputQuestion = inputs.question as string | undefined;
+    const inputOptions = inputs.options as string | undefined;
+
+    // Determine poll ID — use explicit id, stored id, or derive from question+options
+    const pollId =
+      inputId ||
+      (state.pollId as string) ||
+      (inputQuestion && inputOptions
+        ? derivePollId(inputQuestion, inputOptions)
+        : undefined);
+
+    if (!pollId) {
+      throw new Error(
+        'Cannot determine poll ID. Provide an id, or both question and options.'
+      );
+    }
+
+    // Resolve question and options: prefer inputs, fall back to state
+    const question =
+      inputQuestion || (state.pollQuestion as string) || undefined;
+    const optionsRaw =
+      inputOptions || (state.pollOptions as string) || undefined;
+
+    if (!question || !optionsRaw) {
+      if (inputId) {
+        throw new Error(
+          `Poll "${inputId}" not found. It may have expired or never existed.`
+        );
+      }
+      throw new Error(
+        'A new poll requires both "question" and "options" inputs.'
+      );
+    }
+
+    const optionNames = optionsRaw
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean);
@@ -66,17 +122,20 @@ export default defineCard({
     });
 
     // Text output for AI chat clients
-    let textOutput = `## Poll: ${question}\n\n`;
+    let textOutput = `## Poll: ${question}\n`;
+    textOutput += `**Poll ID:** \`${pollId}\`\n\n`;
     if (closed) textOutput += '**This poll is closed.**\n\n';
     textOutput += `**${totalVotes}** vote${totalVotes !== 1 ? 's' : ''} from **${voterCount}** voter${voterCount !== 1 ? 's' : ''}\n\n`;
     for (const opt of optionData) {
       const bar = '\u2588'.repeat(Math.round(opt.pct / 5)) || '\u2591';
       textOutput += `- **${opt.name}** ${bar} ${opt.pct}% (${opt.count})\n`;
     }
-    textOutput += '\nUse the **vote** action to cast a vote.';
+    textOutput += `\nTo vote: use the **vote** action with this poll's id (\`${pollId}\`).`;
+    textOutput += `\nTo reopen later: \`#do/poll ${pollId}\``;
 
     return {
       viewModel: {
+        pollId,
         question,
         options: optionData,
         totalVotes,
@@ -85,7 +144,15 @@ export default defineCard({
         allowMultiple: inputs.allowMultiple ?? false,
       },
       textOutput,
-      state: { ...state, votes, closed },
+      state: {
+        ...state,
+        pollId,
+        pollQuestion: question,
+        pollOptions: optionsRaw,
+        votes,
+        closed,
+        voterCount,
+      },
     };
   },
 
@@ -101,13 +168,13 @@ export default defineCard({
           description: 'The option name to vote for (must match an existing option exactly)',
         },
       },
-      async handler({ cardInputs, actionInputs, state }) {
+      async handler({ state, actionInputs }) {
         if (state.closed) {
           return { message: 'This poll is closed. No more votes can be cast.' };
         }
 
         const choice = (actionInputs.choice as string).trim();
-        const optionNames = (cardInputs.options as string)
+        const optionNames = ((state.pollOptions as string) ?? '')
           .split(',')
           .map((o) => o.trim())
           .filter(Boolean);
@@ -165,8 +232,8 @@ export default defineCard({
       label: 'Reset Votes',
       description: 'Clear all votes and start fresh',
       permission: 'confirm',
-      async handler({ cardInputs, state }) {
-        const optionNames = (cardInputs.options as string)
+      async handler({ state }) {
+        const optionNames = ((state.pollOptions as string) ?? '')
           .split(',')
           .map((o) => o.trim())
           .filter(Boolean);
@@ -182,6 +249,7 @@ export default defineCard({
   },
 
   template: (vm) => {
+    const pollId = vm.pollId as string;
     const options = vm.options as Array<{
       name: string;
       count: number;
@@ -216,6 +284,7 @@ export default defineCard({
       <style>
         .poll-card{font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;max-width:400px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
         .poll-header{padding:24px 24px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+        .poll-id{display:inline-block;font-family:'SF Mono',monospace;font-size:11px;font-weight:500;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:6px;letter-spacing:.04em}
         .poll-option{border:2px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
         .poll-option:hover{transform:translateX(2px)}
         .poll-card[data-closed="true"] .poll-option{cursor:default}
@@ -232,15 +301,18 @@ export default defineCard({
         .poll-footer .poll-voters{font-size:12px;color:#9ca3af;font-weight:400}
       </style>
       <div class="poll-header">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="12" width="4" height="9" rx="1" fill="white" opacity="0.7"/>
-            <rect x="10" y="7" width="4" height="14" rx="1" fill="white" opacity="0.85"/>
-            <rect x="17" y="3" width="4" height="18" rx="1" fill="white"/>
-          </svg>
-          <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;opacity:.85" data-status>
-            ${closed ? 'Poll Closed' : 'Live Poll'}
-          </span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="12" width="4" height="9" rx="1" fill="white" opacity="0.7"/>
+              <rect x="10" y="7" width="4" height="14" rx="1" fill="white" opacity="0.85"/>
+              <rect x="17" y="3" width="4" height="18" rx="1" fill="white"/>
+            </svg>
+            <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;opacity:.85" data-status>
+              ${closed ? 'Poll Closed' : 'Live Poll'}
+            </span>
+          </div>
+          <span class="poll-id">${pollId}</span>
         </div>
         <div style="font-size:20px;font-weight:700;line-height:1.3;letter-spacing:-.01em">${question}</div>
       </div>

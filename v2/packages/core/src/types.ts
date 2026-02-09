@@ -143,6 +143,13 @@ export interface CardDefinition<S extends InputSchema = InputSchema> {
   onWebhook?: (context: WebhookContext) => Promise<WebhookResult>;
 
   /**
+   * Custom state key derived from inputs. When defined, the MCP adapter uses
+   * this instead of hashing all inputs. Return undefined to fall back to the
+   * default behaviour (hash of all inputs).
+   */
+  stateKey?: (inputs: InputValues<S>) => string | undefined;
+
+  /**
    * Template for rendering the card UI.
    * - String ending in .hbs/.html → file path relative to card directory
    * - Function → receives viewModel, returns HTML string
