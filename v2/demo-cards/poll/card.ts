@@ -180,6 +180,8 @@ export default defineCard({
         }
 
         const choice = (actionInputs.choice as string).trim();
+        const voterId = (actionInputs.voterId as string | undefined)?.trim();
+
         const optionNames = ((state.pollOptions as string) ?? '')
           .split(',')
           .map((o) => o.trim())
@@ -191,15 +193,22 @@ export default defineCard({
           };
         }
 
+        // Enforce one vote per voter
+        const voterIds = (state.voterIds as string[]) ?? [];
+        if (voterId && voterIds.includes(voterId)) {
+          return { message: 'You have already voted in this poll.' };
+        }
+
         const votes = (state.votes as Record<string, number>) ?? {};
         votes[choice] = (votes[choice] ?? 0) + 1;
         const voterCount = ((state.voterCount as number) ?? 0) + 1;
+        if (voterId) voterIds.push(voterId);
 
         const totalVotes = Object.values(votes).reduce((sum, n) => sum + n, 0);
         const pct = Math.round((votes[choice] / totalVotes) * 100);
 
         return {
-          state: { ...state, votes, voterCount },
+          state: { ...state, votes, voterCount, voterIds },
           message: `Vote recorded for "${choice}". It now has ${votes[choice]} vote${votes[choice] !== 1 ? 's' : ''} (${pct}%).`,
         };
       },
@@ -247,7 +256,7 @@ export default defineCard({
         for (const name of optionNames) votes[name] = 0;
 
         return {
-          state: { ...state, votes, voterCount: 0 },
+          state: { ...state, votes, voterCount: 0, voterIds: [] },
           message: 'All votes have been reset to zero.',
         };
       },
@@ -293,8 +302,8 @@ export default defineCard({
         .poll-id{display:inline-block;font-family:'SF Mono',monospace;font-size:11px;font-weight:500;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:6px;letter-spacing:.04em}
         .poll-option{border:2px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
         .poll-option:hover{transform:translateX(2px)}
-        .poll-card[data-closed="true"] .poll-option{cursor:default}
-        .poll-card[data-closed="true"] .poll-option:hover{transform:none}
+        .poll-card[data-closed="true"] .poll-option,.poll-card.has-voted .poll-option{cursor:default}
+        .poll-card[data-closed="true"] .poll-option:hover,.poll-card.has-voted .poll-option:hover{transform:none}
         .poll-bar{position:absolute;top:0;left:0;bottom:0;width:0;transition:width .6s ease}
         .poll-content{position:relative;display:flex;align-items:center;justify-content:space-between}
         .poll-dot{width:22px;height:22px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;transition:background .2s}
@@ -336,6 +345,11 @@ export default defineCard({
           var colors = [];
           var counts = [];
           var voters = parseInt(root.dataset.voterCount) || 0;
+          var pollId = root.dataset.pollId;
+          var storageKey = 'poll-voted-' + pollId;
+          var hasVoted = false;
+          try { hasVoted = !!localStorage.getItem(storageKey); } catch(e) {}
+          if (hasVoted) root.classList.add('has-voted');
 
           opts.forEach(function(el, i) {
             colors[i] = el.dataset.color;
@@ -362,27 +376,42 @@ export default defineCard({
             root.querySelector('[data-voters]').textContent = voters;
           }
 
+          function getVoterId() {
+            var key = 'poll-voter-id';
+            var id;
+            try { id = localStorage.getItem(key); } catch(e) {}
+            if (!id) {
+              id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+              try { localStorage.setItem(key, id); } catch(e) {}
+            }
+            return id;
+          }
+
           render();
 
-          if (!isClosed) {
+          if (!isClosed && !hasVoted) {
             var apiBase = root.dataset.api || '';
-            var pollId = root.dataset.pollId;
             opts.forEach(function(el, i) {
               el.addEventListener('click', function() {
+                if (hasVoted) return;
+                hasVoted = true;
+                root.classList.add('has-voted');
                 // Optimistic update
                 counts[i]++;
                 voters++;
                 render();
                 // Persist vote to server
                 var optName = el.dataset.name;
+                var voterId = getVoterId();
                 fetch(apiBase + '/api/cards/do-poll/action/vote', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ id: pollId, choice: optName })
+                  body: JSON.stringify({ id: pollId, choice: optName, voterId: voterId })
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                  if (data.error) { counts[i]--; voters--; render(); return; }
+                  if (data.error) { counts[i]--; voters--; hasVoted = false; root.classList.remove('has-voted'); render(); return; }
+                  try { localStorage.setItem(storageKey, '1'); } catch(e) {}
                   if (data.state && data.state.votes) {
                     opts.forEach(function(o, j) {
                       var n = o.dataset.name;
@@ -392,7 +421,7 @@ export default defineCard({
                     render();
                   }
                 })
-                .catch(function() { counts[i]--; voters--; render(); });
+                .catch(function() { counts[i]--; voters--; hasVoted = false; root.classList.remove('has-voted'); render(); });
               });
             });
           }
