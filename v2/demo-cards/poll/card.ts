@@ -251,7 +251,8 @@ export default defineCard({
       </div>
       <script>
         (function(){
-          var root = document.currentScript.closest('.poll-card');
+          var cards = document.querySelectorAll('.poll-card');
+          var root = cards[cards.length - 1];
           var isClosed = root.dataset.closed === 'true';
           var opts = root.querySelectorAll('.poll-option');
           var colors = [];

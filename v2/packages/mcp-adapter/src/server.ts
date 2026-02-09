@@ -63,7 +63,17 @@ const WIDGET_HTML = `<!DOCTYPE html>
   function render(html) {
     if (!html || rendered) return;
     rendered = true;
-    document.getElementById('card').innerHTML = html;
+    var container = document.getElementById('card');
+    container.innerHTML = html;
+    // innerHTML doesn't execute script tags — re-create them to force execution
+    var scripts = container.querySelectorAll('script');
+    for (var i = 0; i < scripts.length; i++) {
+      var old = scripts[i];
+      var fresh = document.createElement('script');
+      if (old.src) { fresh.src = old.src; }
+      else { fresh.textContent = old.textContent; }
+      old.parentNode.replaceChild(fresh, old);
+    }
   }
 
   // Extract HTML from a tool result object (tries _meta.html then structuredContent._cardHtml)
