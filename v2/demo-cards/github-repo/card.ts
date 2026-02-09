@@ -22,16 +22,16 @@ export default defineCard({
   },
 
   async getData({ inputs, state }) {
-    const raw = (inputs.repo as string).trim();
+    const raw = ((inputs.repo as string) ?? 'UXFoundry/hashdo').trim();
     if (!raw) {
       throw new Error('Please provide a repository in "owner/name" format.');
     }
 
     // ── 1. Parse repo identifier ───────────────────────────────────────
-    const slug = parseRepoSlug(raw);
+    const slug = parseRepoSlug(raw) ?? await searchRepo(raw);
     if (!slug) {
       throw new Error(
-        `Could not parse "${raw}". Use "owner/name" format (e.g. "facebook/react").`
+        `No repository found for "${raw}". Try "owner/name" format (e.g. "facebook/react").`
       );
     }
 
@@ -288,6 +288,28 @@ function parseRepoSlug(input: string): { owner: string; name: string } | null {
   }
 
   return null;
+}
+
+/** Search GitHub for a repo by keyword, return the top result as owner/name */
+async function searchRepo(query: string): Promise<{ owner: string; name: string } | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}+in:name&sort=stars&per_page=1`,
+      {
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'HashDo/2.0 (https://github.com/UXFoundry/hashdo)',
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as any;
+    const item = data.items?.[0];
+    if (!item) return null;
+    return { owner: item.owner?.login, name: item.name };
+  } catch {
+    return null;
+  }
 }
 
 /** Fetch repository data from the GitHub REST API */

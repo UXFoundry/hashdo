@@ -22,7 +22,7 @@ export default defineCard({
   },
 
   async getData({ inputs, state }) {
-    const query = (inputs.query as string).trim();
+    const query = ((inputs.query as string) ?? 'The Stand Stephen King').trim();
     if (!query) {
       throw new Error('Please provide a book title, author, or ISBN to search for.');
     }
@@ -193,68 +193,58 @@ export default defineCard({
     },
   },
 
-  template: (vm) => `
+  template: (vm) => {
+    const subjects = vm.subjects as string[];
+    return `
     <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif; max-width:380px; border-radius:20px; overflow:hidden; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-      <!-- Cover & gradient overlay -->
-      <div style="position:relative; height:200px; background:${vm.accent}; overflow:hidden;">
+
+      <!-- Hero: cover + title side by side -->
+      <div style="display:flex; gap:20px; padding:24px 24px 20px; background:${vm.accent};">
         ${vm.coverUrl ? `
-        <img src="${vm.coverUrl}" alt="Book cover"
-             style="width:100%; height:100%; object-fit:cover; opacity:0.3;" />
-        ` : ''}
-        <div style="position:absolute; bottom:0; left:0; right:0; padding:20px 24px; background:linear-gradient(transparent, rgba(0,0,0,0.6));">
-          <div style="font-size:22px; font-weight:700; color:#fff; line-height:1.2; text-shadow:0 1px 4px rgba(0,0,0,0.3);">
+        <img src="${vm.coverUrl}" alt="Cover"
+             style="width:100px; height:150px; object-fit:cover; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.3); flex-shrink:0;" />
+        ` : `
+        <div style="width:100px; height:150px; border-radius:10px; background:rgba(255,255,255,0.15); flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          <span style="font-size:32px; opacity:0.6;">&#128214;</span>
+        </div>
+        `}
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:flex-end;">
+          <div style="font-size:20px; font-weight:700; color:#fff; line-height:1.25; text-shadow:0 1px 3px rgba(0,0,0,0.2);">
             ${vm.title}
           </div>
-          <div style="font-size:14px; color:rgba(255,255,255,0.9); margin-top:4px;">
-            by ${vm.authors}
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:16px; padding:20px 24px 16px;">
-        <!-- Cover thumbnail -->
-        ${vm.coverUrl ? `
-        <div style="flex-shrink:0;">
-          <img src="${vm.coverUrl}" alt="Cover"
-               style="width:80px; height:120px; object-fit:cover; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); margin-top:-48px; position:relative; border:3px solid #fff;" />
-        </div>
-        ` : ''}
-
-        <!-- Meta info -->
-        <div style="flex:1; min-width:0;">
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; background:${vm.accent}; color:#fff;">
-              ${vm.firstPublishYear}
-            </span>
-            ${vm.pageCount ? `
-            <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:500; background:#f3f4f6; color:#6b7280;">
-              ${vm.pageCount} pages
-            </span>
-            ` : ''}
-            <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:500; background:#f3f4f6; color:#6b7280;">
-              ${vm.editionCount} edition${vm.editionCount !== 1 ? 's' : ''}
-            </span>
+          <div style="font-size:13px; color:rgba(255,255,255,0.85); margin-top:6px;">
+            ${vm.authors}
           </div>
           ${vm.publisher ? `
-          <div style="font-size:12px; color:#9ca3af;">
+          <div style="font-size:11px; color:rgba(255,255,255,0.6); margin-top:4px;">
             ${vm.publisher}
           </div>
           ` : ''}
         </div>
       </div>
 
+      <!-- Stats row -->
+      <div style="display:flex; gap:1px; background:#f3f4f6;">
+        <div style="flex:1; background:#fff; padding:12px 8px; text-align:center;">
+          <div style="font-size:16px; font-weight:700; color:#1f2937;">${vm.firstPublishYear}</div>
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; margin-top:2px;">Published</div>
+        </div>
+        ${vm.pageCount ? `
+        <div style="flex:1; background:#fff; padding:12px 8px; text-align:center;">
+          <div style="font-size:16px; font-weight:700; color:#1f2937;">${vm.pageCount}</div>
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; margin-top:2px;">Pages</div>
+        </div>
+        ` : ''}
+      </div>
+
       <!-- Subjects -->
-      ${(vm.subjects as string[]).length > 0 ? `
-      <div style="padding:0 24px 16px; display:flex; gap:6px; flex-wrap:wrap;">
-        ${(vm.subjects as string[]).map((s: string) => `
-          <span style="display:inline-block; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:500; background:#f0f4ff; color:#4f46e5; border:1px solid #e0e7ff;">
-            ${s}
-          </span>
-        `).join('')}
+      ${subjects.length > 0 ? `
+      <div style="padding:16px 24px 12px; display:flex; gap:6px; flex-wrap:wrap;">
+        ${subjects.map((s: string) => `<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500; background:#f8f9fa; color:#6b7280; border:1px solid #e5e7eb;">${s}</span>`).join('')}
       </div>
       ` : ''}
 
-      <!-- Reading status & link -->
+      <!-- Footer -->
       <div style="padding:12px 24px 16px; border-top:1px solid #f3f4f6; display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; gap:8px; align-items:center;">
           ${vm.isRead ? `
@@ -279,7 +269,8 @@ export default defineCard({
         </a>
       </div>
     </div>
-  `,
+    `;
+  },
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
