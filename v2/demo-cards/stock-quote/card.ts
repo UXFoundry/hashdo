@@ -11,13 +11,15 @@ const marketStateLabels: Record<string, string> = {
 export default defineCard({
   name: 'do-stock',
   description:
-    'Look up a stock price by ticker symbol. Shows current price, daily change, and key stats.',
+    'Look up a stock price by ticker symbol. Shows current price, daily change, and key stats. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a ticker, pass it; otherwise use defaults.',
 
   inputs: {
     symbol: {
       type: 'string',
-      required: true,
-      description: 'Stock ticker symbol (e.g. AAPL, MSFT, TSLA)',
+      required: false,
+      default: 'AAPL',
+      description:
+        'Stock ticker symbol (e.g. AAPL, MSFT, TSLA). Has a sensible default — only override if the user specifies a ticker.',
     },
     currency: {
       type: 'string',

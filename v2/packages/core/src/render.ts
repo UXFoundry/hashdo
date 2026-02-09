@@ -20,16 +20,21 @@ export async function renderCard<S extends InputSchema>(
   /** Runtime options forwarded to getData */
   options?: { baseUrl?: string }
 ): Promise<{ html: string; state: CardState; textOutput?: string; viewModel: Record<string, unknown> }> {
-  // 0. Apply defaults for any missing inputs
-  const resolvedInputs = { ...inputs };
-  for (const [key, def] of Object.entries(card.inputs)) {
-    if ((resolvedInputs as Record<string, unknown>)[key] === undefined && def.default !== undefined) {
-      (resolvedInputs as Record<string, unknown>)[key] = def.default;
-    }
+  // 1. Fetch data — defaults are applied by defineCard's getData wrapper
+  let result;
+  try {
+    result = await card.getData({ inputs, rawInputs: inputs, state, baseUrl: options?.baseUrl ?? '' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const errorHtml = renderErrorCard(card.name, message);
+    return {
+      html: errorHtml,
+      state,
+      textOutput: `Error: ${message}`,
+      viewModel: { _error: true, _errorMessage: message },
+    };
   }
 
-  // 1. Fetch data
-  const result = await card.getData({ inputs: resolvedInputs, state, baseUrl: options?.baseUrl ?? '' });
   const newState = { ...state, ...result.state };
 
   // 2. Resolve template
@@ -54,4 +59,30 @@ export async function renderCard<S extends InputSchema>(
 </div>`.trim();
 
   return { html: wrappedHtml, state: newState, textOutput: result.textOutput, viewModel: result.viewModel };
+}
+
+/** Render a styled error card when getData fails. */
+function renderErrorCard(cardName: string, message: string): string {
+  const tag = cardName.startsWith('do-') ? `#do/${cardName.slice(3)}` : `#${cardName}`;
+  const escaped = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `
+<div class="hashdo-card" data-card="${cardName}">
+  <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;max-width:400px;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="padding:24px 24px 20px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" opacity="0.85"/>
+          <line x1="12" y1="8" x2="12" y2="13" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="16.5" r="1" fill="white"/>
+        </svg>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;opacity:.85;">Error</span>
+        <span style="margin-left:auto;font-family:'SF Mono',monospace;font-size:11px;font-weight:500;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:6px;">${tag}</span>
+      </div>
+      <div style="font-size:18px;font-weight:700;line-height:1.3;">Something went wrong</div>
+    </div>
+    <div style="padding:20px 24px;">
+      <p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0;">${escaped}</p>
+    </div>
+  </div>
+</div>`.trim();
 }

@@ -3,13 +3,15 @@ import { defineCard } from '@hashdo/core';
 export default defineCard({
   name: 'do-crypto',
   description:
-    'Look up a cryptocurrency price by coin ID. Shows current price, 24h change, and market cap.',
+    'Look up a cryptocurrency price by coin ID. Shows current price, 24h change, and market cap. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a coin, pass it; otherwise use defaults.',
 
   inputs: {
     coin: {
       type: 'string',
-      required: true,
-      description: 'CoinGecko coin ID (e.g. bitcoin, ethereum, solana)',
+      required: false,
+      default: 'bitcoin',
+      description:
+        'CoinGecko coin ID (e.g. bitcoin, ethereum, solana). Has a sensible default — only override if the user specifies a coin.',
     },
     currency: {
       type: 'string',

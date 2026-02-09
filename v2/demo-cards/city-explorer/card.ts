@@ -12,14 +12,15 @@ import { defineCard } from '@hashdo/core';
 export default defineCard({
   name: 'do-city',
   description:
-    'Explore any city in the world. Shows current weather, local time, country flag, population, currency, and languages in a single card. Call this when the user types #do/city or asks about a city.',
+    'Explore any city in the world. Shows current weather, local time, country flag, population, currency, and languages in a single card. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a city, pass it; otherwise use defaults.',
 
   inputs: {
     city: {
       type: 'string',
-      required: true,
+      required: false,
+      default: 'Tokyo',
       description:
-        'City name (e.g. "Paris", "Tokyo", "Cape Town"). Resolved via geocoding.',
+        'City name (e.g. "Paris", "Tokyo", "Cape Town"). Resolved via geocoding. Has a sensible default — only override if the user specifies a city.',
     },
     units: {
       type: 'string',

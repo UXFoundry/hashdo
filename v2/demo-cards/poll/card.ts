@@ -51,17 +51,17 @@ export default defineCard({
     return undefined;
   },
 
-  async getData({ inputs, state, baseUrl }) {
-    const inputId = inputs.id as string | undefined;
-    const inputQuestion = inputs.question as string | undefined;
-    const inputOptions = inputs.options as string | undefined;
+  async getData({ inputs, rawInputs, state, baseUrl }) {
+    const inputId = rawInputs.id as string | undefined;
+    const explicitQuestion = rawInputs.question as string | undefined;
+    const explicitOptions = rawInputs.options as string | undefined;
 
     // Determine poll ID — use explicit id, stored id, or derive from question+options
     const pollId =
       inputId ||
       (state.pollId as string) ||
-      (inputQuestion && inputOptions
-        ? derivePollId(inputQuestion, inputOptions)
+      (explicitQuestion && explicitOptions
+        ? derivePollId(explicitQuestion, explicitOptions)
         : undefined);
 
     if (!pollId) {
@@ -70,14 +70,11 @@ export default defineCard({
       );
     }
 
-    // When opening by ID, prefer state (input values may just be schema defaults).
-    // When creating, prefer inputs.
-    const question = inputId
-      ? (state.pollQuestion as string) || inputQuestion || undefined
-      : inputQuestion || (state.pollQuestion as string) || undefined;
-    const optionsRaw = inputId
-      ? (state.pollOptions as string) || inputOptions || undefined
-      : inputOptions || (state.pollOptions as string) || undefined;
+    // Use explicitly provided inputs first, then state, then schema defaults
+    const question =
+      explicitQuestion || (state.pollQuestion as string) || (inputs.question as string);
+    const optionsRaw =
+      explicitOptions || (state.pollOptions as string) || (inputs.options as string);
 
     if (!question || !optionsRaw) {
       if (inputId) {

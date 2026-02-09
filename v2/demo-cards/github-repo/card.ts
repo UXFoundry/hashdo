@@ -10,14 +10,15 @@ import { defineCard } from '@hashdo/core';
 export default defineCard({
   name: 'do-repo',
   description:
-    'Look up any public GitHub repository. Shows stars, forks, language, description, topics, and license. Call this when the user types #do/repo or asks about a GitHub repository.',
+    'Look up any public GitHub repository. Shows stars, forks, language, description, topics, and license. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a repo, pass it; otherwise use defaults.',
 
   inputs: {
     repo: {
       type: 'string',
-      required: true,
+      required: false,
+      default: 'facebook/react',
       description:
-        'Repository in "owner/name" format (e.g. "facebook/react", "torvalds/linux") or a GitHub URL',
+        'Repository in "owner/name" format (e.g. "facebook/react", "torvalds/linux") or a GitHub URL. Has a sensible default — only override if the user specifies a repo.',
     },
   },
 

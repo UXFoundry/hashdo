@@ -83,8 +83,10 @@ export interface ActionResult {
 // ---------------------------------------------------------------------------
 
 export interface GetDataContext<S extends InputSchema = InputSchema> {
-  /** Validated input values */
+  /** Validated input values (with defaults applied for any missing inputs) */
   inputs: InputValues<S>;
+  /** Original input values before defaults were applied. Use this to check whether a value was explicitly provided. */
+  rawInputs: Partial<InputValues<S>>;
   /** Previously persisted card state (empty object on first render) */
   state: CardState;
   /** Base URL of the card server (e.g. "https://app.up.railway.app"). Empty string when unknown. */

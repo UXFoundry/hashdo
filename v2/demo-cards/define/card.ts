@@ -10,13 +10,15 @@ import { defineCard } from '@hashdo/core';
 export default defineCard({
   name: 'do-define',
   description:
-    'Look up the definition of any English word. Shows phonetics, meanings, examples, synonyms, and antonyms. Call this when the user types #do/define or asks for a word definition.',
+    'Look up the definition of any English word. Shows phonetics, meanings, examples, synonyms, and antonyms. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a word, pass it; otherwise use defaults.',
 
   inputs: {
     word: {
       type: 'string',
-      required: true,
-      description: 'The English word to define (e.g. "serendipity", "ephemeral")',
+      required: false,
+      default: 'serendipity',
+      description:
+        'The English word to define. Has a sensible default — only override if the user specifies a word.',
     },
   },
 

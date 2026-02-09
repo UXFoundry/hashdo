@@ -6,14 +6,17 @@ import { defineCard } from '@hashdo/core';
  */
 export default defineCard({
   name: 'do-qr',
-  description: 'Generate a QR code image from text or a URL. Returns an embeddable QR code.',
+  description:
+    'Generate a QR code image from text or a URL. Returns an embeddable QR code. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions text or a URL, pass it; otherwise use defaults.',
   icon: './icon.svg',
 
   inputs: {
     content: {
       type: 'string',
-      required: true,
-      description: 'The text or URL to encode in the QR code',
+      required: false,
+      default: 'https://hashdo.com',
+      description:
+        'The text or URL to encode in the QR code. Has a sensible default — only override if the user specifies content.',
     },
     size: {
       type: 'number',
