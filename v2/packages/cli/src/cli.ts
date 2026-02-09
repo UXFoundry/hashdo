@@ -13,7 +13,7 @@ import 'dotenv/config';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
-import { type CardDefinition, renderCard } from '@hashdo/core';
+import { type CardDefinition, type StateStore, renderCard } from '@hashdo/core';
 import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
 import { warmupBrowser, renderHtmlToImage } from '@hashdo/screenshot';
 import { generateOpenApiSpec } from './openapi.js';
@@ -321,6 +321,37 @@ function parseInputsFromParams(searchParams: URLSearchParams): Record<string, un
   return inputs;
 }
 
+/** Compute a stable state key from input values (mirrors mcp-adapter logic). */
+function stableKey(obj: Record<string, unknown>): string {
+  const sorted = Object.keys(obj)
+    .sort()
+    .map((k) => `${k}=${obj[k]}`)
+    .join('&');
+  return Buffer.from(sorted).toString('base64url');
+}
+
+/** Render a card with state loaded from the store, and persist updated state. */
+async function renderCardWithState(
+  card: CardDefinition,
+  inputs: Record<string, unknown>,
+  store: StateStore,
+  cardDir?: string,
+) {
+  const customKey = card.stateKey?.(inputs as any);
+  const cardKey = customKey
+    ? `card:${card.name}:${customKey}`
+    : `card:${card.name}:${stableKey(inputs)}`;
+
+  const state = (await store.get(cardKey)) ?? {};
+  const result = await renderCard(card, inputs as any, state, cardDir);
+
+  if (result.state && Object.keys(result.state).length > 0) {
+    await store.set(cardKey, result.state);
+  }
+
+  return result;
+}
+
 async function cmdStart() {
   const port = parseInt(
     process.env.PORT ??
@@ -453,7 +484,7 @@ async function cmdStart() {
       try {
         trackCardUsage(entry.card.name);
         const inputs = parseInputsFromParams(url.searchParams);
-        const result = await renderCard(entry.card, inputs as any, {}, entry.dir);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir);
         const imageBuffer = await renderHtmlToImage(result.html);
         if (!imageBuffer) {
           res.writeHead(503, { ...corsHeaders, 'Content-Type': 'application/json' });
@@ -493,7 +524,7 @@ async function cmdStart() {
       }
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCard(entry.card, inputs as any, {}, entry.dir);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir);
         const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${port}`;
         const imageParams = new URLSearchParams();
         for (const [key, value] of Object.entries(inputs)) {
@@ -593,7 +624,7 @@ async function cmdStart() {
 
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCard(entry.card, inputs as any, {}, entry.dir);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir);
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(renderPreviewPage(entry.card, result.html, inputs));
       } catch (err: any) {
