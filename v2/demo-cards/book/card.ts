@@ -304,7 +304,7 @@ async function searchBook(query: string): Promise<BookResult | null> {
 
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1&fields=${fields}`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'HashDo/2.0 (https://github.com/UXFoundry/hashdo)' },
+      headers: { 'User-Agent': 'HashDo/2.0 (https://github.com/shauntrennery/hashdo)' },
     });
 
     if (!res.ok) {

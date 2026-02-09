@@ -7,10 +7,10 @@
   "keywords": ["hashdo", "cards"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/UXFoundry/hashdo.git"
+    "url": "https://github.com/shauntrennery/hashdo.git"
   },
   "bugs": {
-    "url": "https://github.com/UXFoundry/hashdo/issues"
+    "url": "https://github.com/shauntrennery/hashdo/issues"
   },
   "dependencies": {
     "async": "2.5.0",
