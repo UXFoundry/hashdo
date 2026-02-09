@@ -386,6 +386,7 @@ async function cmdStart() {
     cardDirs,
     enableScreenshots: true,
     stateStore,
+    baseUrl: process.env['BASE_URL'] ?? `http://localhost:${port}`,
   };
 
   const server = createServer(async (req, res) => {
@@ -498,6 +499,86 @@ async function cmdStart() {
           'Cache-Control': 'public, max-age=60',
         });
         res.end(imageBuffer);
+      } catch (err: any) {
+        res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /api/cards/:name/action/:action — execute a card action, return JSON
+    const actionMatch = url.pathname.match(/^\/api\/cards\/([^/]+)\/action\/([^/]+)$/);
+    if (actionMatch && req.method === 'POST') {
+      const cardName = actionMatch[1];
+      const actionName = actionMatch[2];
+      const entry = cardMap.get(cardName);
+
+      if (!entry) {
+        res.writeHead(404, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Card not found: ${cardName}` }));
+        return;
+      }
+
+      const action = entry.card.actions?.[actionName];
+      if (!action) {
+        res.writeHead(404, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Action not found: ${actionName} on ${cardName}` }));
+        return;
+      }
+
+      let body: Record<string, unknown>;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        res.writeHead(400, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON request body' }));
+        return;
+      }
+
+      // Split body into card inputs vs action inputs (mirrors MCP adapter logic)
+      const cardInputs: Record<string, unknown> = {};
+      const actionInputs: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(body)) {
+        if (key in entry.card.inputs) {
+          cardInputs[key] = val;
+        } else {
+          actionInputs[key] = val;
+        }
+      }
+
+      // Compute state key (same logic as MCP adapter's registerActionTools)
+      const customKey = entry.card.stateKey?.(cardInputs as any);
+      const cardKey = customKey
+        ? `card:${entry.card.name}:${customKey}`
+        : `card:${entry.card.name}:${stableKey(cardInputs)}`;
+
+      const state = (await stateStore.get(cardKey)) ?? {};
+
+      try {
+        const result = await action.handler({
+          cardInputs: cardInputs as any,
+          state,
+          actionInputs,
+        });
+
+        // Persist updated state
+        if (result.state) {
+          const newState = { ...state, ...result.state };
+          await stateStore.set(cardKey, newState);
+        }
+
+        const responseState = result.state ?? state;
+        res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          card: cardName,
+          action: actionName,
+          message: result.message ?? null,
+          state: {
+            votes: responseState.votes ?? null,
+            voterCount: responseState.voterCount ?? null,
+            closed: responseState.closed ?? null,
+          },
+        }));
       } catch (err: any) {
         res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));

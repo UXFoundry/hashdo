@@ -33,6 +33,8 @@ export interface McpCardServerOptions {
   instructions?: string;
   /** Render card HTML to PNG images in tool responses. Requires Chromium. */
   enableScreenshots?: boolean;
+  /** Base URL of the HashDo server (used for CSP connectDomains in MCP Apps widgets) */
+  baseUrl?: string;
 }
 
 /** URI for the shared card widget resource */
@@ -149,6 +151,17 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   const { name, version, cards, cardDirs = {}, enableScreenshots = false } = options;
   const stateStore = options.stateStore ?? new MemoryStateStore();
 
+  // Parse hostname from baseUrl for CSP connectDomains (allows widget fetch)
+  const connectDomains: string[] = [];
+  if (options.baseUrl) {
+    try {
+      const parsed = new URL(options.baseUrl);
+      connectDomains.push(parsed.host);
+    } catch {
+      // Invalid URL, skip
+    }
+  }
+
   const server = new McpServer(
     { name, version },
     { instructions: options.instructions ?? generateInstructions(cards) },
@@ -170,7 +183,7 @@ export function createMcpCardServer(options: McpCardServerOptions) {
             domain: 'hashdo',
             csp: {
               resourceDomains: [],
-              connectDomains: [],
+              connectDomains,
             },
           },
         },
@@ -179,7 +192,7 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   );
 
   for (const card of cards) {
-    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots);
+    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots, connectDomains);
     registerActionTools(server, card, stateStore);
   }
 
@@ -222,7 +235,8 @@ function registerCardTool(
   card: CardDefinition,
   stateStore: StateStore,
   cardDir: string | undefined,
-  enableScreenshots: boolean
+  enableScreenshots: boolean,
+  connectDomains: string[]
 ) {
   const zodShape = inputSchemaToZodShape(card.inputs);
 
@@ -243,7 +257,7 @@ function registerCardTool(
           domain: 'hashdo',
           csp: {
             resourceDomains: [],
-            connectDomains: [],
+            connectDomains,
           },
         },
       },
