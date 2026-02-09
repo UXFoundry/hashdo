@@ -147,6 +147,7 @@ export default defineCard({
         voterCount,
         closed,
         allowMultiple: inputs.allowMultiple ?? false,
+        apiBaseUrl: process.env['BASE_URL'] ?? '',
       },
       textOutput,
       state: {
@@ -285,7 +286,7 @@ export default defineCard({
       .join('');
 
     return `
-    <div class="poll-card" data-closed="${closed}">
+    <div class="poll-card" data-closed="${closed}" data-poll-id="${pollId}" data-api="${vm.apiBaseUrl as string}">
       <style>
         .poll-card{font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;max-width:400px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
         .poll-header{padding:24px 24px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
@@ -364,11 +365,34 @@ export default defineCard({
           render();
 
           if (!isClosed) {
+            var apiBase = root.dataset.api || '';
+            var pollId = root.dataset.pollId;
             opts.forEach(function(el, i) {
               el.addEventListener('click', function() {
+                // Optimistic update
                 counts[i]++;
                 voters++;
                 render();
+                // Persist vote to server
+                var optName = el.dataset.name;
+                fetch(apiBase + '/api/cards/do-poll/action/vote', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: pollId, choice: optName })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                  if (data.error) { counts[i]--; voters--; render(); return; }
+                  if (data.state && data.state.votes) {
+                    opts.forEach(function(o, j) {
+                      var n = o.dataset.name;
+                      if (data.state.votes[n] !== undefined) counts[j] = data.state.votes[n];
+                    });
+                    if (data.state.voterCount !== null) voters = data.state.voterCount;
+                    render();
+                  }
+                })
+                .catch(function() { counts[i]--; voters--; render(); });
               });
             });
           }
