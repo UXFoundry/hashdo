@@ -793,7 +793,7 @@ function renderIndex(cards: CardDefinition[]): string {
   <nav class="top-nav">
     <a href="/docs" class="nav-link">Developer Docs</a>
     <a href="/editor" class="nav-link">Card Editor</a>
-    <a href="https://github.com/UXFoundry/hashdo" class="nav-link">GitHub</a>
+    <a href="https://github.com/shauntrennery/hashdo" class="nav-link">GitHub</a>
   </nav>
   <main>
     <section class="hero">
@@ -826,7 +826,7 @@ function renderIndex(cards: CardDefinition[]): string {
     <p class="no-results" id="noResults">No cards match your search.</p>
 
     <footer>
-      <a href="/docs">Docs</a><span class="dot">\u00B7</span><a href="/editor">Editor</a><span class="dot">\u00B7</span><a href="/privacy">Privacy</a><span class="dot">\u00B7</span><a href="/terms">Terms</a><span class="dot">\u00B7</span><a href="https://github.com/UXFoundry/hashdo">GitHub</a>
+      <a href="/docs">Docs</a><span class="dot">\u00B7</span><a href="/editor">Editor</a><span class="dot">\u00B7</span><a href="/privacy">Privacy</a><span class="dot">\u00B7</span><a href="/terms">Terms</a><span class="dot">\u00B7</span><a href="https://github.com/shauntrennery/hashdo">GitHub</a>
     </footer>
   </main>
   <script>
@@ -1049,7 +1049,7 @@ export default defineCard({
 
 <h2>Submitting Cards</h2>
 <ol>
-  <li><strong>Fork</strong> the <a href="https://github.com/UXFoundry/hashdo">HashDo repository</a> on GitHub</li>
+  <li><strong>Fork</strong> the <a href="https://github.com/shauntrennery/hashdo">HashDo repository</a> on GitHub</li>
   <li><strong>Create</strong> your card directory under <code>v2/demo-cards/</code></li>
   <li><strong>Test</strong> locally with <code>hashdo preview</code></li>
   <li><strong>Submit</strong> a pull request with your card</li>
@@ -1687,7 +1687,7 @@ const PRIVACY_POLICY = `
 <p>We may update this policy from time to time. Changes will be reflected on this page with an updated date.</p>
 
 <h2>Contact</h2>
-<p>Questions? Reach us at <a href="https://github.com/UXFoundry/hashdo">github.com/UXFoundry/hashdo</a>.</p>
+<p>Questions? Reach us at <a href="https://github.com/shauntrennery/hashdo">github.com/shauntrennery/hashdo</a>.</p>
 `;
 
 const TERMS_OF_SERVICE = `
@@ -1727,7 +1727,7 @@ const TERMS_OF_SERVICE = `
 <p>We may update these terms at any time. Continued use of the Service after changes constitutes acceptance of the updated terms.</p>
 
 <h2>Contact</h2>
-<p>Questions? Reach us at <a href="https://github.com/UXFoundry/hashdo">github.com/UXFoundry/hashdo</a>.</p>
+<p>Questions? Reach us at <a href="https://github.com/shauntrennery/hashdo">github.com/shauntrennery/hashdo</a>.</p>
 `;
 
 main().catch((err) => {

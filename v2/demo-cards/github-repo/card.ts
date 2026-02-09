@@ -22,7 +22,7 @@ export default defineCard({
   },
 
   async getData({ inputs, state }) {
-    const raw = ((inputs.repo as string) ?? 'UXFoundry/hashdo').trim();
+    const raw = ((inputs.repo as string) ?? 'shauntrennery/hashdo').trim();
     if (!raw) {
       throw new Error('Please provide a repository in "owner/name" format.');
     }
@@ -298,7 +298,7 @@ async function searchRepo(query: string): Promise<{ owner: string; name: string 
       {
         headers: {
           'Accept': 'application/vnd.github+json',
-          'User-Agent': 'HashDo/2.0 (https://github.com/UXFoundry/hashdo)',
+          'User-Agent': 'HashDo/2.0 (https://github.com/shauntrennery/hashdo)',
         },
       }
     );
@@ -320,7 +320,7 @@ async function fetchRepo(owner: string, name: string): Promise<RepoData | null> 
       {
         headers: {
           'Accept': 'application/vnd.github+json',
-          'User-Agent': 'HashDo/2.0 (https://github.com/UXFoundry/hashdo)',
+          'User-Agent': 'HashDo/2.0 (https://github.com/shauntrennery/hashdo)',
         },
       }
     );
