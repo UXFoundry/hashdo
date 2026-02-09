@@ -690,7 +690,7 @@ function renderIndex(cards: CardDefinition[]): string {
         radial-gradient(ellipse 80% 60% at 25% 40%,rgba(10,132,255,0.06),transparent),
         radial-gradient(ellipse 60% 50% at 75% 60%,rgba(244,67,54,0.05),transparent);
     }
-    main{max-width:700px;margin:0 auto;padding:80px 24px 60px}
+    main{max-width:960px;margin:0 auto;padding:80px 24px 60px}
 
     /* ── Hero ─────────────────────────────────────── */
     .hero{text-align:center;margin-bottom:64px}
@@ -734,7 +734,8 @@ function renderIndex(cards: CardDefinition[]): string {
 
     /* ── Cards Grid ───────────────────────────────── */
     .cards-label{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:20px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    @media(max-width:860px){.grid{grid-template-columns:1fr 1fr}}
     @media(max-width:560px){.grid{grid-template-columns:1fr}}
 
     .card{

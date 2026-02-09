@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-book",
+  "version": "1.0.0",
+  "description": "Look up any book — cover, author, subjects, and reading list",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}

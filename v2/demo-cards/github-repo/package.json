@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-github-repo",
+  "version": "1.0.0",
+  "description": "GitHub repository profile with stats and activity",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}

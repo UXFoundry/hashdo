@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-define",
+  "version": "1.0.0",
+  "description": "Dictionary word definitions, phonetics, and examples",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}
