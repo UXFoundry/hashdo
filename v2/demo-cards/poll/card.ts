@@ -12,14 +12,14 @@ function derivePollId(question: string, options: string): string {
 export default defineCard({
   name: 'do-poll',
   description:
-    'Create an interactive poll or survey. Provide question + options to create a new poll (returns an id). Provide just an id to open an existing poll.',
+    'Create or open an interactive poll. Usage: "#do/poll" with question + options creates a new poll. "#do/poll <id>" (e.g. "#do/poll 71a1bc") opens an existing poll by its 6-character hex ID — pass the ID as the "id" parameter, do NOT pass question or options when opening by ID.',
 
   inputs: {
     id: {
       type: 'string',
       required: false,
       description:
-        'Poll ID. Omit when creating a new poll (one will be generated). Provide to open an existing poll.',
+        'Poll ID (6-character hex string). When the user types "#do/poll 71a1bc", map "71a1bc" to this parameter. Omit only when creating a brand-new poll.',
     },
     question: {
       type: 'string',
