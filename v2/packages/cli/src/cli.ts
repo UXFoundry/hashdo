@@ -10,7 +10,7 @@
  */
 
 import 'dotenv/config';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
@@ -19,6 +19,25 @@ import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
 import { warmupBrowser, renderHtmlToImage } from '@hashdo/screenshot';
 import { generateOpenApiSpec } from './openapi.js';
 import { createStateStore } from './create-state-store.js';
+
+// ---------------------------------------------------------------------------
+// Anonymous user ID (cookie-based)
+// ---------------------------------------------------------------------------
+const COOKIE_NAME = 'hd_uid';
+const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+
+/** Read user ID from cookie, or generate a new one. Returns [userId, needsSet]. */
+function resolveUserId(req: import('node:http').IncomingMessage): [string, boolean] {
+  const cookieHeader = req.headers.cookie ?? '';
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`));
+  if (match) return [match[1], false];
+  return [randomUUID(), true];
+}
+
+/** Build the Set-Cookie header value. */
+function makeSetCookie(userId: string): string {
+  return `${COOKIE_NAME}=${userId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`;
+}
 
 // ---------------------------------------------------------------------------
 // In-memory card usage tracking
@@ -189,8 +208,13 @@ async function cmdPreview() {
     process.exit(1);
   }
 
+  const stateStore = createStateStore();
+  const baseUrl = `http://localhost:${port}`;
+
   const server = createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://localhost:${port}`);
+    const [userId, needsSetCookie] = resolveUserId(req);
+    const cookieHeader = needsSetCookie ? { 'Set-Cookie': makeSetCookie(userId) } : {};
 
     // Re-discover cards on every request (hot reload)
     const discovered = await discoverCards(targetDir, true);
@@ -198,8 +222,42 @@ async function cmdPreview() {
 
     // Index page — list all cards
     if (url.pathname === '/') {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
       res.end(renderIndex(sortCardsByUsage(discovered.map((d) => d.card))));
+      return;
+    }
+
+    // Shared card (full screen, no inputs panel)
+    const shareMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)$/);
+    if (shareMatch) {
+      const entry = cardMap.get(shareMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`Card not found: ${shareMatch[1]}`);
+        return;
+      }
+      const shareId = decodeURIComponent(shareMatch[2]);
+
+      let inputs: Record<string, unknown> = {};
+      if ('id' in entry.card.inputs) {
+        inputs.id = shareId;
+      } else {
+        const shareKey = `share:${entry.card.name}:${shareId}`;
+        const shareMeta = await stateStore.get(shareKey);
+        if (shareMeta?._inputs) {
+          inputs = shareMeta._inputs as Record<string, unknown>;
+        }
+      }
+
+      try {
+        trackCardUsage(entry.card.name);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, baseUrl, userId);
+        res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
+        res.end(renderSharePage(entry.card, result.html, baseUrl));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end(`Error rendering shared card: ${err.message}`);
+      }
       return;
     }
 
@@ -227,15 +285,10 @@ async function cmdPreview() {
 
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCard(
-          entry.card,
-          inputs as any,
-          {},
-          entry.dir
-        );
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, baseUrl, userId);
 
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(renderPreviewPage(entry.card, result.html, inputs, `http://localhost:${port}`));
+        res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
+        res.end(renderPreviewPage(entry.card, result.html, inputs, baseUrl));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error rendering card: ${err.message}`);
@@ -339,7 +392,7 @@ function computeShareId(card: CardDefinition, inputs: Record<string, unknown>): 
   if (!card.shareable) return undefined;
 
   if (card.stateKey) {
-    const key = card.stateKey(inputs as any);
+    const key = card.stateKey(inputs as any, undefined); // share IDs must not be per-user
     if (key) {
       const colonIdx = key.lastIndexOf(':');
       return colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
@@ -360,14 +413,15 @@ async function renderCardWithState(
   store: StateStore,
   cardDir?: string,
   baseUrl?: string,
+  userId?: string,
 ) {
-  const customKey = card.stateKey?.(inputs as any);
+  const customKey = card.stateKey?.(inputs as any, userId);
   const cardKey = customKey
     ? `card:${card.name}:${customKey}`
     : `card:${card.name}:${stableKey(inputs)}`;
 
   const state = (await store.get(cardKey)) ?? {};
-  const result = await renderCard(card, inputs as any, state, cardDir, { baseUrl });
+  const result = await renderCard(card, inputs as any, state, cardDir, { baseUrl, userId });
 
   if (result.state && Object.keys(result.state).length > 0) {
     await store.set(cardKey, result.state);
@@ -424,6 +478,8 @@ async function cmdStart() {
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://localhost:${port}`);
+    const [userId, needsSetCookie] = resolveUserId(req);
+    const cookieHeader = needsSetCookie ? { 'Set-Cookie': makeSetCookie(userId) } : {};
 
     // MCP endpoint
     if (url.pathname === '/mcp') {
@@ -518,7 +574,7 @@ async function cmdStart() {
       try {
         trackCardUsage(entry.card.name);
         const inputs = parseInputsFromParams(url.searchParams);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
         const imageBuffer = await renderHtmlToImage(result.html);
         if (!imageBuffer) {
           res.writeHead(503, { ...corsHeaders, 'Content-Type': 'application/json' });
@@ -580,7 +636,7 @@ async function cmdStart() {
       }
 
       // Compute state key (same logic as MCP adapter's registerActionTools)
-      const customKey = entry.card.stateKey?.(cardInputs as any);
+      const customKey = entry.card.stateKey?.(cardInputs as any, userId);
       const cardKey = customKey
         ? `card:${entry.card.name}:${customKey}`
         : `card:${entry.card.name}:${stableKey(cardInputs)}`;
@@ -638,7 +694,7 @@ async function cmdStart() {
       }
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
         const baseUrl = process.env['BASE_URL'] ?? `http://localhost:${port}`;
         const imageParams = new URLSearchParams();
         for (const [key, value] of Object.entries(inputs)) {
@@ -713,7 +769,7 @@ async function cmdStart() {
 
     // Index page
     if (url.pathname === '/') {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
       res.end(renderIndex(sortCardsByUsage(discovered.map((d) => d.card))));
       return;
     }
@@ -744,8 +800,8 @@ async function cmdStart() {
 
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
+        res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
         res.end(renderSharePage(entry.card, result.html, mcpOptions.baseUrl));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -774,8 +830,8 @@ async function cmdStart() {
 
       try {
         trackCardUsage(entry.card.name);
-        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
+        res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
         res.end(renderPreviewPage(entry.card, result.html, inputs, mcpOptions.baseUrl));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -1107,6 +1163,7 @@ function renderPreviewPage(
     .render-btn { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .render-btn:hover { background: #555; }
     .card-output { display: flex; justify-content: center; align-items: flex-start; }
+    .card-output .panel { background: transparent; box-shadow: none; }
     .inputs-section { order: 0; }
     .card-output { order: 1; }
     @media (max-width: 640px) {
@@ -1168,6 +1225,7 @@ function renderSharePage(
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .share-container { width: 100%; max-width: 480px; }
+    .hashdo-share-btn { display: none !important; }
   </style>
 </head>
 <body>

@@ -13,24 +13,26 @@ export default defineCard({
     'Play a Wordle word-guessing game. Guess the 5-letter word in 6 tries. Call this when the user types #do/game/wordle or wants to play a word game.',
 
   inputs: {
-    length: {
-      type: 'number',
+    seed: {
+      type: 'string',
       required: false,
-      default: 5,
-      description: 'Word length (default 5)',
+      description:
+        'Seed for deterministic word selection (e.g. "2026-02-10" or a phrase). Same seed = same puzzle. Defaults to today\'s date for a daily puzzle.',
     },
   },
 
   async getData({ inputs, state }) {
+    const seed = (inputs.seed as string | undefined) || new Date().toISOString().slice(0, 10);
     const wins = (state.wins as number) ?? 0;
     const played = (state.played as number) ?? 0;
     const streak = (state.streak as number) ?? 0;
     const bestStreak = (state.bestStreak as number) ?? 0;
 
+    const seedNote = seed ? ` (seed: "${seed}")` : '';
     const textOutput = [
       '## Wordle',
       '',
-      `Guess the 5-letter word in 6 tries.`,
+      `Guess the 5-letter word in 6 tries.${seedNote}`,
       '',
       `**Stats:** ${wins}/${played} wins, streak: ${streak}, best: ${bestStreak}`,
       '',
@@ -40,7 +42,7 @@ export default defineCard({
     ].join('\n');
 
     return {
-      viewModel: { wins, played, streak, bestStreak },
+      viewModel: { wins, played, streak, bestStreak, seed },
       textOutput,
       state: { ...state, wins, played, streak, bestStreak },
     };
@@ -92,6 +94,17 @@ export default defineCard({
 
       <script>
       (function() {
+        var SEED = ${JSON.stringify(vm.seed || '')};
+
+        // Simple string hash for deterministic word selection
+        function hashSeed(s) {
+          var h = 0;
+          for (var i = 0; i < s.length; i++) {
+            h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+          }
+          return Math.abs(h);
+        }
+
         // ── Word list (common 5-letter words) ──────────────────────────────
         var WORDS = [
           'apple','beach','brain','brave','brick','bring','brush','build','candy','chain',
@@ -163,7 +176,9 @@ export default defineCard({
         var kbEl    = document.getElementById('w-kb');
 
         function init() {
-          target = WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
+          target = SEED
+            ? WORDS[hashSeed(SEED) % WORDS.length].toUpperCase()
+            : WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
           guesses = [];
           currentRow = 0;
           currentCol = 0;
