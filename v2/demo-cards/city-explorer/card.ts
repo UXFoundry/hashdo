@@ -1,18 +1,20 @@
-import { defineCard } from '@hashdo/core';
+import { defineCard, galleryHtml } from '@hashdo/core';
+import type { GalleryImage } from '@hashdo/core';
 
 /**
- * #do/city — Interactive city explorer card.
+ * #do/city — Interactive city explorer card with photo gallery.
  *
- * Combines weather (Open-Meteo), country data (REST Countries), and local time
- * into a single rich dashboard. Demonstrates multi-API mashup, stateful
- * favorites, and multiple actions — the kind of card only HashDo can build.
+ * Combines weather (Open-Meteo), country data (REST Countries), local time,
+ * and city photos (Wikipedia/Wikimedia Commons) into a single rich dashboard.
+ * Demonstrates multi-API mashup, stateful favorites, gallery integration,
+ * and multiple actions.
  *
  * All APIs are free and require no keys.
  */
 export default defineCard({
   name: 'do-city',
   description:
-    'Explore any city in the world. Shows current weather, local time, country flag, population, currency, and languages in a single card. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a city, pass it; otherwise use defaults.',
+    'Explore any city in the world. Shows current weather, local time, country flag, population, currency, languages, and a photo gallery in a single card. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a city, pass it; otherwise use defaults.',
 
   shareable: true,
 
@@ -46,10 +48,11 @@ export default defineCard({
       );
     }
 
-    // ── 2. Fetch weather + country data in parallel ──────────────────
-    const [weather, country] = await Promise.all([
+    // ── 2. Fetch weather + country data + city photos in parallel ────
+    const [weather, country, photos] = await Promise.all([
       fetchWeather(geo.lat, geo.lon, tempUnit),
       fetchCountryData(geo.countryCode),
+      fetchCityPhotos(geo.name),
     ]);
 
     // ── 3. Compute local time from timezone ──────────────────────────
@@ -59,37 +62,51 @@ export default defineCard({
     const isNight = localTime.hour < 6 || localTime.hour >= 20;
     const gradient = pickGradient(weather.weatherCode, isNight);
 
-    // ── 5. Build rich text output for AI clients ─────────────────────
+    // ── 5. Build gallery images ──────────────────────────────────────
+    const galleryImages: GalleryImage[] = photos.map((p, i) => ({
+      id: `photo-${i}`,
+      src: p.url,
+      alt: p.title,
+      width: p.width,
+      height: p.height,
+      title: p.title,
+      source: { label: 'Wikimedia Commons', url: p.pageUrl },
+    }));
+
+    // ── 6. Build rich text output for AI clients ─────────────────────
     let textOutput = `## ${geo.displayName} ${country.flag}\n\n`;
     textOutput += `**Local time:** ${localTime.formatted}\n\n`;
     textOutput += `### Weather\n`;
     textOutput += `| | |\n|---|---|\n`;
     textOutput += `| Conditions | ${weather.icon} ${weather.condition} |\n`;
-    textOutput += `| Temperature | **${weather.temp}°${unitSymbol}** (feels like ${weather.feelsLike}°${unitSymbol}) |\n`;
+    textOutput += `| Temperature | **${weather.temp}\u00b0${unitSymbol}** (feels like ${weather.feelsLike}\u00b0${unitSymbol}) |\n`;
     if (weather.high !== null && weather.low !== null) {
-      textOutput += `| High / Low | ${weather.high}°${unitSymbol} / ${weather.low}°${unitSymbol} |\n`;
+      textOutput += `| High / Low | ${weather.high}\u00b0${unitSymbol} / ${weather.low}\u00b0${unitSymbol} |\n`;
     }
     textOutput += `| Humidity | ${weather.humidity}% |\n`;
     textOutput += `| Wind | ${weather.windSpeed} km/h |\n`;
     if (weather.sunrise && weather.sunset) {
       textOutput += `| Sunrise / Sunset | ${weather.sunrise} / ${weather.sunset} |\n`;
     }
-    textOutput += `\n### Country — ${country.name}\n`;
+    textOutput += `\n### Country \u2014 ${country.name}\n`;
     textOutput += `| | |\n|---|---|\n`;
     textOutput += `| Capital | ${country.capital} |\n`;
     textOutput += `| Population | ${formatNumber(country.population)} |\n`;
     textOutput += `| Currency | ${country.currency} |\n`;
     textOutput += `| Languages | ${country.languages} |\n`;
-    textOutput += `| Region | ${country.region}${country.subregion ? ` — ${country.subregion}` : ''} |\n`;
+    textOutput += `| Region | ${country.region}${country.subregion ? ` \u2014 ${country.subregion}` : ''} |\n`;
     textOutput += `| Timezone | ${weather.timezone} |\n`;
+    if (photos.length > 0) {
+      textOutput += `\n*${photos.length} photos available*\n`;
+    }
 
-    // ── 6. Update state ──────────────────────────────────────────────
+    // ── 7. Update state ──────────────────────────────────────────────
     const lookupHistory = (state.lookupHistory as string[]) ?? [];
     if (!lookupHistory.includes(geo.displayName)) {
       lookupHistory.push(geo.displayName);
     }
 
-    // ── 7. View model ────────────────────────────────────────────────
+    // ── 8. View model ────────────────────────────────────────────────
     const viewModel = {
       // City
       cityName: geo.name,
@@ -125,6 +142,9 @@ export default defineCard({
       languages: country.languages,
       region: country.region,
       subregion: country.subregion,
+
+      // Photos
+      galleryImages,
 
       // Style
       gradient,
@@ -204,8 +224,21 @@ export default defineCard({
     },
   },
 
-  template: (vm) => `
-    <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif; max-width:380px; border-radius:20px; overflow:hidden; color:#fff; background:${vm.gradient}; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+  template: (vm) => {
+    const images = vm.galleryImages as GalleryImage[];
+
+    const photoGallery = images.length > 0
+      ? `<div style="padding:16px 24px 12px;">
+          ${galleryHtml({
+            images,
+            title: `Photos of ${vm.cityName}`,
+            maxVisible: 6,
+          })}
+        </div>`
+      : '';
+
+    return `
+    <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif; max-width:420px; border-radius:20px; overflow:hidden; color:#fff; background:${vm.gradient}; box-shadow:0 8px 32px rgba(0,0,0,0.18);">
       <!-- Header: City + Flag + Time -->
       <div style="padding:24px 24px 0;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -233,10 +266,10 @@ export default defineCard({
         <span style="font-size:56px; line-height:1;">${vm.weatherIcon}</span>
         <div>
           <div style="font-size:44px; font-weight:700; letter-spacing:-0.03em; line-height:1;">
-            ${vm.temp}<span style="font-size:22px; font-weight:400; opacity:0.8;">°${vm.unitSymbol}</span>
+            ${vm.temp}<span style="font-size:22px; font-weight:400; opacity:0.8;">\u00b0${vm.unitSymbol}</span>
           </div>
           <div style="font-size:15px; opacity:0.9; margin-top:2px;">${vm.weatherCondition}</div>
-          <div style="font-size:12px; opacity:0.7;">Feels like ${vm.feelsLike}°${vm.unitSymbol}</div>
+          <div style="font-size:12px; opacity:0.7;">Feels like ${vm.feelsLike}\u00b0${vm.unitSymbol}</div>
         </div>
       </div>
 
@@ -245,7 +278,7 @@ export default defineCard({
         ${vm.high !== null ? `
         <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:10px; padding:8px 12px; flex:1; min-width:70px;">
           <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.7;">H / L</div>
-          <div style="font-size:14px; font-weight:600; margin-top:2px;">${vm.high}° / ${vm.low}°</div>
+          <div style="font-size:14px; font-weight:600; margin-top:2px;">${vm.high}\u00b0 / ${vm.low}\u00b0</div>
         </div>` : ''}
         <div style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-radius:10px; padding:8px 12px; flex:1; min-width:70px;">
           <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.7;">Humidity</div>
@@ -268,6 +301,9 @@ export default defineCard({
         <span>Sunset ${vm.sunset}</span>
       </div>` : ''}
 
+      <!-- City photo gallery -->
+      ${photoGallery}
+
       <!-- Country info -->
       <div style="background:rgba(0,0,0,0.15); backdrop-filter:blur(8px); padding:16px 24px;">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px 20px;">
@@ -289,12 +325,13 @@ export default defineCard({
           </div>
         </div>
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.15); display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; opacity:0.6;">${vm.region}${vm.subregion ? ' — ' + vm.subregion : ''}</span>
-          <span style="font-size:11px; opacity:0.6;">${vm.lat}°, ${vm.lon}°</span>
+          <span style="font-size:11px; opacity:0.6;">${vm.region}${vm.subregion ? ' \u2014 ' + vm.subregion : ''}</span>
+          <span style="font-size:11px; opacity:0.6;">${vm.lat}\u00b0, ${vm.lon}\u00b0</span>
         </div>
       </div>
     </div>
-  `,
+  `;
+  },
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -471,6 +508,84 @@ async function fetchCountryData(countryCode: string): Promise<{
     };
   } catch {
     return fallback;
+  }
+}
+
+/** Fetch city photos from Wikipedia / Wikimedia Commons (free, no key) */
+async function fetchCityPhotos(
+  cityName: string
+): Promise<Array<{ url: string; title: string; width: number; height: number; pageUrl: string }>> {
+  try {
+    // Step 1: Get the Wikipedia page images for this city
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cityName)}&prop=images&imlimit=20&format=json&origin=*`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { 'User-Agent': 'HashDo/2.0 (https://github.com/shauntrennery/hashdo)' },
+    });
+    if (!searchRes.ok) return [];
+
+    const searchData = (await searchRes.json()) as any;
+    const pages = searchData.query?.pages ?? {};
+    const page = Object.values(pages)[0] as any;
+    if (!page?.images) return [];
+
+    // Filter to likely photo images (skip SVGs, icons, flags, logos)
+    const imageNames: string[] = page.images
+      .map((img: any) => img.title as string)
+      .filter((title: string) => {
+        const lower = title.toLowerCase();
+        return (
+          !lower.endsWith('.svg') &&
+          !lower.includes('icon') &&
+          !lower.includes('logo') &&
+          !lower.includes('flag') &&
+          !lower.includes('coat_of_arms') &&
+          !lower.includes('commons-logo') &&
+          !lower.includes('wikidata') &&
+          !lower.includes('edit-clear') &&
+          !lower.includes('symbol') &&
+          (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png'))
+        );
+      })
+      .slice(0, 6);
+
+    if (!imageNames.length) return [];
+
+    // Step 2: Get image info (URLs + dimensions) from Wikimedia Commons
+    const titles = imageNames.join('|');
+    const infoUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=800&format=json&origin=*`;
+    const infoRes = await fetch(infoUrl, {
+      headers: { 'User-Agent': 'HashDo/2.0 (https://github.com/shauntrennery/hashdo)' },
+    });
+    if (!infoRes.ok) return [];
+
+    const infoData = (await infoRes.json()) as any;
+    const infoPages = infoData.query?.pages ?? {};
+
+    const results: Array<{ url: string; title: string; width: number; height: number; pageUrl: string }> = [];
+
+    for (const p of Object.values(infoPages) as any[]) {
+      const info = p.imageinfo?.[0];
+      if (!info) continue;
+
+      // Use the thumbnail URL (800px wide) for performance
+      const url = info.thumburl || info.url;
+      if (!url) continue;
+
+      // Extract a clean title
+      const rawTitle = p.title?.replace(/^File:/, '').replace(/\.[^.]+$/, '').replace(/_/g, ' ') ?? 'Photo';
+
+      results.push({
+        url,
+        title: rawTitle.length > 60 ? rawTitle.slice(0, 57) + '...' : rawTitle,
+        width: info.thumbwidth || info.width || 800,
+        height: info.thumbheight || info.height || 600,
+        pageUrl: info.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(p.title)}`,
+      });
+    }
+
+    return results;
+  } catch {
+    return [];
   }
 }
 

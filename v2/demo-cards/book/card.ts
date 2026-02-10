@@ -1,10 +1,12 @@
-import { defineCard } from '@hashdo/core';
+import { defineCard, galleryHtml } from '@hashdo/core';
+import type { GalleryImage } from '@hashdo/core';
 
 /**
- * #do/book — Book lookup card.
+ * #do/book — Book lookup card with cover gallery.
  *
  * Search by title, author, or ISBN using the Open Library API (free, no key).
- * Shows cover art, author, publication year, subjects, and page count.
+ * Shows a gallery of matching book covers (tool-ui gallery pattern),
+ * plus detailed info for the top result.
  * Users can maintain a personal reading list with stateful actions.
  */
 export default defineCard({
@@ -14,7 +16,7 @@ export default defineCard({
   stateKey: (_inputs, userId) => userId ? `user:${userId}` : undefined,
 
   description:
-    'Look up any book by title, author, or ISBN. Shows cover, author, publication info, and subjects. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a book, pass it; otherwise use defaults.',
+    'Look up any book by title, author, or ISBN. Shows a gallery of matching covers, plus details for the top result. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a book, pass it; otherwise use defaults.',
 
   inputs: {
     query: {
@@ -32,30 +34,46 @@ export default defineCard({
       throw new Error('Please provide a book title, author, or ISBN to search for.');
     }
 
-    // ── 1. Search Open Library ─────────────────────────────────────────
-    const book = await searchBook(query);
-    if (!book) {
+    // ── 1. Search Open Library for multiple results ─────────────────────
+    const books = await searchBooks(query, 8);
+    if (!books.length) {
       throw new Error(
         `No books found matching "${query}". Try a different title or author.`
       );
     }
 
-    // ── 2. Build cover URL ─────────────────────────────────────────────
+    const book = books[0];
+
+    // ── 2. Build gallery images ─────────────────────────────────────────
+    const galleryImages: GalleryImage[] = books
+      .filter((b) => b.coverId)
+      .map((b) => ({
+        id: b.key,
+        src: `https://covers.openlibrary.org/b/id/${b.coverId}-L.jpg`,
+        alt: `${b.title} by ${b.authors.join(', ')}`,
+        width: 300,
+        height: 450,
+        title: b.title,
+        caption: b.authors.join(', '),
+        source: { label: 'Open Library', url: `https://openlibrary.org${b.key}` },
+      }));
+
+    // ── 3. Build cover URL for top result ────────────────────────────────
     const coverUrl = book.coverId
       ? `https://covers.openlibrary.org/b/id/${book.coverId}-L.jpg`
       : null;
 
-    // ── 3. Reading list state ──────────────────────────────────────────
+    // ── 4. Reading list state ────────────────────────────────────────────
     const readingList = (state.readingList as string[]) ?? [];
     const readBooks = (state.readBooks as string[]) ?? [];
     const bookId = book.key;
     const isOnList = readingList.includes(bookId);
     const isRead = readBooks.includes(bookId);
 
-    // ── 4. Pick accent color from subject ──────────────────────────────
+    // ── 5. Pick accent color from subject ────────────────────────────────
     const accent = pickAccentColor(book.subjects[0] ?? '');
 
-    // ── 5. Build text output for chat ──────────────────────────────────
+    // ── 6. Build text output for chat ────────────────────────────────────
     let textOutput = `## ${book.title}\n\n`;
     textOutput += `**by ${book.authors.join(', ')}**\n\n`;
     textOutput += `| | |\n|---|---|\n`;
@@ -74,8 +92,11 @@ export default defineCard({
       textOutput += `\n![Cover](${coverUrl})\n`;
     }
     textOutput += `\n[View on Open Library](https://openlibrary.org${book.key})\n`;
+    if (books.length > 1) {
+      textOutput += `\n*${books.length} results found for "${query}"*\n`;
+    }
 
-    // ── 6. Build viewModel ─────────────────────────────────────────────
+    // ── 7. Build viewModel ───────────────────────────────────────────────
     const viewModel = {
       title: book.title,
       authors: book.authors.join(', '),
@@ -90,6 +111,9 @@ export default defineCard({
       isOnList,
       isRead,
       readingListCount: readingList.length,
+      galleryImages,
+      query,
+      totalResults: books.length,
     };
 
     return {
@@ -200,8 +224,19 @@ export default defineCard({
 
   template: (vm) => {
     const subjects = vm.subjects as string[];
+    const images = vm.galleryImages as GalleryImage[];
+
+    const gallery = images.length > 1
+      ? `<div style="padding:16px 24px 8px;">
+          ${galleryHtml({
+            images,
+            title: `${vm.totalResults} results for \u201c${vm.query}\u201d`,
+          })}
+        </div>`
+      : '';
+
     return `
-    <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif; max-width:380px; border-radius:20px; overflow:hidden; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+    <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif; max-width:420px; border-radius:20px; overflow:hidden; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,0.12);">
 
       <!-- Hero: cover + title side by side -->
       <div style="display:flex; gap:20px; padding:24px 24px 20px; background:${vm.accent};">
@@ -240,6 +275,10 @@ export default defineCard({
           <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; margin-top:2px;">Pages</div>
         </div>
         ` : ''}
+        <div style="flex:1; background:#fff; padding:12px 8px; text-align:center;">
+          <div style="font-size:16px; font-weight:700; color:#1f2937;">${vm.editionCount}</div>
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; margin-top:2px;">Editions</div>
+        </div>
       </div>
 
       <!-- Subjects -->
@@ -248,6 +287,9 @@ export default defineCard({
         ${subjects.map((s: string) => `<span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500; background:#f8f9fa; color:#6b7280; border:1px solid #e5e7eb;">${s}</span>`).join('')}
       </div>
       ` : ''}
+
+      <!-- Cover gallery -->
+      ${gallery}
 
       <!-- Footer -->
       <div style="padding:12px 24px 16px; border-top:1px solid #f3f4f6; display:flex; justify-content:space-between; align-items:center;">
@@ -292,8 +334,8 @@ interface BookResult {
   publishers: string[];
 }
 
-/** Search Open Library for a book by title, author, or ISBN */
-async function searchBook(query: string): Promise<BookResult | null> {
+/** Search Open Library for books by title, author, or ISBN */
+async function searchBooks(query: string, limit: number): Promise<BookResult[]> {
   try {
     const fields = [
       'key',
@@ -307,7 +349,7 @@ async function searchBook(query: string): Promise<BookResult | null> {
       'publisher',
     ].join(',');
 
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1&fields=${fields}`;
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=${limit}&fields=${fields}`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'HashDo/2.0 (https://github.com/shauntrennery/hashdo)' },
     });
@@ -317,10 +359,9 @@ async function searchBook(query: string): Promise<BookResult | null> {
     }
 
     const data = (await res.json()) as any;
-    const doc = data.docs?.[0];
-    if (!doc) return null;
+    const docs = data.docs ?? [];
 
-    return {
+    return docs.map((doc: any) => ({
       key: doc.key ?? '',
       title: doc.title ?? 'Untitled',
       authors: doc.author_name ?? ['Unknown Author'],
@@ -330,7 +371,7 @@ async function searchBook(query: string): Promise<BookResult | null> {
       editionCount: doc.edition_count ?? 1,
       subjects: (doc.subject ?? []).slice(0, 10),
       publishers: doc.publisher ?? [],
-    };
+    }));
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`[book] ${detail}`);
