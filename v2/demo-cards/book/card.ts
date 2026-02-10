@@ -9,6 +9,10 @@ import { defineCard } from '@hashdo/core';
  */
 export default defineCard({
   name: 'do-book',
+  shareable: true,
+
+  stateKey: (_inputs, userId) => userId ? `user:${userId}` : undefined,
+
   description:
     'Look up any book by title, author, or ISBN. Shows cover, author, publication info, and subjects. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a book, pass it; otherwise use defaults.',
 

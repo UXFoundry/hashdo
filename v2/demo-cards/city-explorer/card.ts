@@ -14,6 +14,8 @@ export default defineCard({
   description:
     'Explore any city in the world. Shows current weather, local time, country flag, population, currency, and languages in a single card. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a city, pass it; otherwise use defaults.',
 
+  shareable: true,
+
   inputs: {
     city: {
       type: 'string',

@@ -91,6 +91,8 @@ export interface GetDataContext<S extends InputSchema = InputSchema> {
   state: CardState;
   /** Base URL of the card server (e.g. "https://app.up.railway.app"). Empty string when unknown. */
   baseUrl: string;
+  /** Anonymous user ID from cookie. Undefined when no HTTP context (e.g. MCP stdio). */
+  userId?: string;
 }
 
 export interface GetDataResult {
@@ -151,7 +153,14 @@ export interface CardDefinition<S extends InputSchema = InputSchema> {
    * this instead of hashing all inputs. Return undefined to fall back to the
    * default behaviour (hash of all inputs).
    */
-  stateKey?: (inputs: InputValues<S>) => string | undefined;
+  stateKey?: (inputs: InputValues<S>, userId?: string) => string | undefined;
+
+  /**
+   * When true, the card is shareable. A unique ID is derived from stateKey
+   * (or hashed inputs) and rendered as a clickable badge in a share header.
+   * Clicking the ID opens the card instance in a new browser tab.
+   */
+  shareable?: boolean;
 
   /**
    * Template for rendering the card UI.

@@ -9,6 +9,10 @@ import { defineCard } from '@hashdo/core';
  */
 export default defineCard({
   name: 'do-define',
+  shareable: true,
+
+  stateKey: (_inputs, userId) => userId ? `user:${userId}` : undefined,
+
   description:
     'Look up the definition of any English word. Shows phonetics, meanings, examples, synonyms, and antonyms. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a word, pass it; otherwise use defaults.',
 
@@ -69,7 +73,11 @@ export default defineCard({
       textOutput += '\n';
     }
 
-    // ── 5. Build viewModel ─────────────────────────────────────────────
+    // ── 5. Track unique words seen ─────────────────────────────────────
+    const seenWords = new Set<string>(state.seenWords as string[] ?? []);
+    seenWords.add(word);
+
+    // ── 6. Build viewModel ─────────────────────────────────────────────
     const viewModel = {
       word: entry.word,
       phonetic: entry.phonetic,
@@ -82,7 +90,7 @@ export default defineCard({
       })),
       accent,
       isSaved,
-      vocabCount: vocabList.length,
+      uniqueWordsSeen: seenWords.size,
     };
 
     return {
@@ -92,6 +100,7 @@ export default defineCard({
         ...state,
         lastWord: word,
         lookupCount: ((state.lookupCount as number) || 0) + 1,
+        seenWords: [...seenWords],
       },
     };
   },
@@ -217,7 +226,7 @@ export default defineCard({
         <!-- Footer -->
         <div style="padding:12px 24px 16px; border-top:1px solid #f3f4f6; display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:12px; color:#9ca3af;">
-            ${vm.vocabCount} word${vm.vocabCount !== 1 ? 's' : ''} in vocabulary
+            ${vm.uniqueWordsSeen} unique word${vm.uniqueWordsSeen !== 1 ? 's' : ''} seen
           </span>
           <span style="font-size:11px; color:#d1d5db;">
             Free Dictionary API

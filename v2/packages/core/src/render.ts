@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import Handlebars from 'handlebars';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -18,12 +19,12 @@ export async function renderCard<S extends InputSchema>(
   /** Absolute path to the directory containing the card (for resolving template files) */
   cardDir?: string,
   /** Runtime options forwarded to getData */
-  options?: { baseUrl?: string }
+  options?: { baseUrl?: string; userId?: string }
 ): Promise<{ html: string; state: CardState; textOutput?: string; viewModel: Record<string, unknown> }> {
   // 1. Fetch data — defaults are applied by defineCard's getData wrapper
   let result;
   try {
-    result = await card.getData({ inputs, rawInputs: inputs, state, baseUrl: options?.baseUrl ?? '' });
+    result = await card.getData({ inputs, rawInputs: inputs, state, baseUrl: options?.baseUrl ?? '', userId: options?.userId });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const errorHtml = renderErrorCard(card.name, message);
@@ -52,13 +53,59 @@ export async function renderCard<S extends InputSchema>(
     html = compiled(result.viewModel);
   }
 
-  // 3. Wrap in card container
-  const wrappedHtml = `
+  // 3. Compute share ID for shareable cards
+  const shareId = computeShareId(card, inputs);
+  const shareBar = shareId ? renderShareBar(card.name, shareId, options?.baseUrl) : '';
+
+  // 4. Wrap in card container (share button peeks from under the card edge)
+  const wrappedHtml = shareBar
+    ? `
+<div class="hashdo-card" data-card="${card.name}" data-share-id="${shareId}" style="position:relative;">
+  ${shareBar}<div style="position:relative;z-index:1;">${html}</div>
+</div>`.trim()
+    : `
 <div class="hashdo-card" data-card="${card.name}">
   ${html}
 </div>`.trim();
 
   return { html: wrappedHtml, state: newState, textOutput: result.textOutput, viewModel: result.viewModel };
+}
+
+/**
+ * Compute a short share ID for a shareable card.
+ * Uses stateKey if available, otherwise hashes the inputs.
+ */
+function computeShareId<S extends InputSchema>(
+  card: CardDefinition<S>,
+  inputs: InputValues<S>
+): string | undefined {
+  if (!card.shareable) return undefined;
+
+  if (card.stateKey) {
+    const key = card.stateKey(inputs, undefined); // share IDs must not be per-user
+    if (key) {
+      // Extract the value portion (after last colon) e.g. "id:71a1bc" → "71a1bc"
+      const colonIdx = key.lastIndexOf(':');
+      return colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
+    }
+  }
+
+  // Fallback: 6-char hex hash of sorted inputs
+  const sorted = Object.keys(inputs as Record<string, unknown>)
+    .sort()
+    .map((k) => `${k}=${(inputs as Record<string, unknown>)[k]}`)
+    .join('&');
+  return createHash('sha256').update(sorted).digest('hex').slice(0, 6);
+}
+
+/** Render a share button that peeks from under the top-right corner of the card. */
+function renderShareBar(cardName: string, shareId: string, baseUrl?: string): string {
+  const shareUrl = baseUrl
+    ? `${baseUrl}/share/${encodeURIComponent(cardName)}/${encodeURIComponent(shareId)}`
+    : `#`;
+  const shareSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
+  return `
+  <a href="${shareUrl}" target="_blank" rel="noopener" title="Share this card" class="hashdo-share-btn" style="position:absolute;top:-9px;right:-9px;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.9);color:#9ca3af;text-decoration:none;opacity:0.4;transition:all .2s ease;z-index:0;border:none;box-shadow:0 1px 3px rgba(0,0,0,0.1);" onmouseover="this.style.opacity='1';this.style.zIndex='20';this.style.color='#6366f1';this.style.transform='scale(1.15)';this.style.boxShadow='0 3px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.opacity='0.4';this.style.zIndex='0';this.style.color='#9ca3af';this.style.transform='scale(1)';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">${shareSvg}</a>`;
 }
 
 /** Render a styled error card when getData fails. */

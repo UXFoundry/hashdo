@@ -13,6 +13,8 @@ export default defineCard({
   description:
     'Look up a stock price by ticker symbol. Shows current price, daily change, and key stats. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a ticker, pass it; otherwise use defaults.',
 
+  shareable: true,
+
   inputs: {
     symbol: {
       type: 'string',
