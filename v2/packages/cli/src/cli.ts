@@ -241,6 +241,8 @@ async function cmdPreview() {
       let inputs: Record<string, unknown> = {};
       if ('id' in entry.card.inputs) {
         inputs.id = shareId;
+      } else if ('seed' in entry.card.inputs) {
+        inputs.seed = shareId;
       } else {
         const shareKey = `share:${entry.card.name}:${shareId}`;
         const shareMeta = await stateStore.get(shareKey);
@@ -330,6 +332,79 @@ async function cmdPreview() {
     if (url.pathname === '/api/cards/stats' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(getCardUsage()));
+      return;
+    }
+
+    // POST /api/cards/:name/action/:action — execute a card action
+    const actionMatch = url.pathname.match(/^\/api\/cards\/([^/]+)\/action\/([^/]+)$/);
+    if (actionMatch && req.method === 'POST') {
+      const cardName = actionMatch[1];
+      const actionName = actionMatch[2];
+      const entry = cardMap.get(cardName);
+
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Card not found: ${cardName}` }));
+        return;
+      }
+
+      const action = entry.card.actions?.[actionName];
+      if (!action) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Action not found: ${actionName} on ${cardName}` }));
+        return;
+      }
+
+      let body: Record<string, unknown>;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON request body' }));
+        return;
+      }
+
+      const cardInputs: Record<string, unknown> = {};
+      const actionInputs: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(body)) {
+        if (key in entry.card.inputs) {
+          cardInputs[key] = val;
+        } else {
+          actionInputs[key] = val;
+        }
+      }
+
+      const customKey = entry.card.stateKey?.(cardInputs as any, userId);
+      const cardKey = customKey
+        ? `card:${entry.card.name}:${customKey}`
+        : `card:${entry.card.name}:${stableKey(cardInputs)}`;
+
+      const state = (await stateStore.get(cardKey)) ?? {};
+
+      try {
+        const result = await action.handler({
+          cardInputs: cardInputs as any,
+          state,
+          actionInputs,
+        });
+
+        if (result.state) {
+          const newState = { ...state, ...result.state };
+          await stateStore.set(cardKey, newState);
+        }
+
+        const responseState = result.state ?? state;
+        res.writeHead(200, { 'Content-Type': 'application/json', ...cookieHeader });
+        res.end(JSON.stringify({
+          card: cardName,
+          action: actionName,
+          message: result.message ?? null,
+          state: responseState,
+        }));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
       return;
     }
 
@@ -662,11 +737,7 @@ async function cmdStart() {
           card: cardName,
           action: actionName,
           message: result.message ?? null,
-          state: {
-            votes: responseState.votes ?? null,
-            voterCount: responseState.voterCount ?? null,
-            closed: responseState.closed ?? null,
-          },
+          state: responseState,
         }));
       } catch (err: any) {
         res.writeHead(500, { ...corsHeaders, 'Content-Type': 'application/json' });
@@ -785,11 +856,13 @@ async function cmdStart() {
       }
       const shareId = decodeURIComponent(shareMatch[2]);
 
-      // Resolve inputs: for cards with an 'id' input, pass the share ID directly;
+      // Resolve inputs: for cards with an 'id' or 'seed' input, pass the share ID directly;
       // otherwise look up stored inputs from the share mapping.
       let inputs: Record<string, unknown> = {};
       if ('id' in entry.card.inputs) {
         inputs.id = shareId;
+      } else if ('seed' in entry.card.inputs) {
+        inputs.seed = shareId;
       } else {
         const shareKey = `share:${entry.card.name}:${shareId}`;
         const shareMeta = await stateStore.get(shareKey);
@@ -884,8 +957,13 @@ function renderIndex(cards: CardDefinition[]): string {
     'do-crypto':     { icon: '\uD83E\uDE99', color: '#FF9F0A', glow: 'rgba(255,159,10,0.15)' },
     'do-qr':         { icon: '\u2B21', color: '#BF5AF2', glow: 'rgba(191,90,242,0.15)' },
     'do-city':       { icon: '\uD83C\uDF0D', color: '#FF6B35', glow: 'rgba(255,107,53,0.15)' },
+    'do-book':        { icon: '\uD83D\uDCDA', color: '#8B5CF6', glow: 'rgba(139,92,246,0.15)' },
+    'do-poll':        { icon: '\uD83D\uDDF3\uFE0F', color: '#EC4899', glow: 'rgba(236,72,153,0.15)' },
+    'do-define':      { icon: '\uD83D\uDCD6', color: '#14B8A6', glow: 'rgba(20,184,166,0.15)' },
+    'do-repo':        { icon: '\uD83D\uDC19', color: '#6E7681', glow: 'rgba(110,118,129,0.15)' },
     'do-game-snake':  { icon: '\uD83D\uDC0D', color: '#4ade80', glow: 'rgba(74,222,128,0.15)', tag: '#do/game/snake' },
     'do-game-wordle': { icon: '\uD83D\uDFE9', color: '#538d4e', glow: 'rgba(83,141,78,0.15)', tag: '#do/game/wordle' },
+    'do-game-zen-garden': { icon: '\uD83E\uDEA8', color: '#8B7355', glow: 'rgba(139,115,85,0.15)', tag: '#do/game/zen-garden' },
   };
   const fallbackMeta = { icon: '\u26A1', color: '#6b6b80', glow: 'rgba(107,107,128,0.15)' };
 

@@ -1,0 +1,15 @@
+{
+  "name": "@hashdo/card-game-zen-garden",
+  "version": "1.0.0",
+  "description": "Rake a Japanese zen garden — daily sand patterns around stones",
+  "type": "module",
+  "main": "card.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@hashdo/core": "*"
+  },
+  "license": "MIT"
+}
