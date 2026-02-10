@@ -234,7 +234,7 @@ async function cmdPreview() {
         );
 
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(renderPreviewPage(entry.card, result.html, inputs));
+        res.end(renderPreviewPage(entry.card, result.html, inputs, `http://localhost:${port}`));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error rendering card: ${err.message}`);
@@ -708,7 +708,7 @@ async function cmdStart() {
         trackCardUsage(entry.card.name);
         const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(renderPreviewPage(entry.card, result.html, inputs));
+        res.end(renderPreviewPage(entry.card, result.html, inputs, mcpOptions.baseUrl));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error rendering card: ${err.message}`);
@@ -974,7 +974,8 @@ function renderIndex(cards: CardDefinition[]): string {
 function renderPreviewPage(
   card: CardDefinition,
   cardHtml: string,
-  inputs: Record<string, unknown>
+  inputs: Record<string, unknown>,
+  baseUrl?: string
 ): string {
   const inputFields = Object.entries(card.inputs)
     .map(([name, def]) => {
@@ -995,13 +996,35 @@ function renderPreviewPage(
     })
     .join('\n');
 
+  // Build Open Graph meta tags for social sharing
+  let ogTags = '';
+  if (baseUrl) {
+    const queryParts = Object.entries(inputs)
+      .filter(([, v]) => v !== '' && v !== undefined)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    const imageUrl = `${baseUrl}/api/cards/${encodeURIComponent(card.name)}/image${queryParts ? '?' + queryParts : ''}`;
+    const cardUrl = `${baseUrl}/card/${encodeURIComponent(card.name)}${queryParts ? '?' + queryParts : ''}`;
+    const description = card.description || `Interactive ${card.name} card on HashDo`;
+    ogTags = `
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${card.name} — HashDo">
+  <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:url" content="${cardUrl}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${card.name} — HashDo">
+  <meta name="twitter:description" content="${description}">
+  <meta name="twitter:image" content="${imageUrl}">`;
+  }
+
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${card.name} — HashDo Preview</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">${ogTags}
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 40px 20px; }
@@ -1016,12 +1039,17 @@ function renderPreviewPage(
     .render-btn { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .render-btn:hover { background: #555; }
     .card-output { display: flex; justify-content: center; align-items: flex-start; }
-    @media (max-width: 640px) { .container { grid-template-columns: 1fr; } }
+    .inputs-section { order: 0; }
+    .card-output { order: 1; }
+    @media (max-width: 640px) {
+      .container { grid-template-columns: 1fr; }
+      .card-output { order: -1; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div>
+    <div class="inputs-section">
       <a href="/" class="back">&larr; All Cards</a>
       <div class="panel">
         <h1>${card.name}</h1>
