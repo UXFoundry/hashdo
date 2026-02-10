@@ -10,6 +10,7 @@
  */
 
 import 'dotenv/config';
+import { createHash } from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
@@ -330,6 +331,28 @@ function stableKey(obj: Record<string, unknown>): string {
   return Buffer.from(sorted).toString('base64url');
 }
 
+/**
+ * Compute the share ID for a shareable card (mirrors logic in @hashdo/core render.ts).
+ * Uses stateKey if available, otherwise hashes the inputs.
+ */
+function computeShareId(card: CardDefinition, inputs: Record<string, unknown>): string | undefined {
+  if (!card.shareable) return undefined;
+
+  if (card.stateKey) {
+    const key = card.stateKey(inputs as any);
+    if (key) {
+      const colonIdx = key.lastIndexOf(':');
+      return colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
+    }
+  }
+
+  const sorted = Object.keys(inputs)
+    .sort()
+    .map((k) => `${k}=${inputs[k]}`)
+    .join('&');
+  return createHash('sha256').update(sorted).digest('hex').slice(0, 6);
+}
+
 /** Render a card with state loaded from the store, and persist updated state. */
 async function renderCardWithState(
   card: CardDefinition,
@@ -348,6 +371,15 @@ async function renderCardWithState(
 
   if (result.state && Object.keys(result.state).length > 0) {
     await store.set(cardKey, result.state);
+  }
+
+  // For shareable cards, persist a share mapping so the /share route can look up inputs
+  if (card.shareable) {
+    const shareId = computeShareId(card, inputs);
+    if (shareId) {
+      const shareKey = `share:${card.name}:${shareId}`;
+      await store.set(shareKey, { _inputs: inputs });
+    }
   }
 
   return result;
@@ -683,6 +715,42 @@ async function cmdStart() {
     if (url.pathname === '/') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(renderIndex(sortCardsByUsage(discovered.map((d) => d.card))));
+      return;
+    }
+
+    // Shared card (full screen, no inputs panel)
+    const shareMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)$/);
+    if (shareMatch) {
+      const entry = cardMap.get(shareMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`Card not found: ${shareMatch[1]}`);
+        return;
+      }
+      const shareId = decodeURIComponent(shareMatch[2]);
+
+      // Resolve inputs: for cards with an 'id' input, pass the share ID directly;
+      // otherwise look up stored inputs from the share mapping.
+      let inputs: Record<string, unknown> = {};
+      if ('id' in entry.card.inputs) {
+        inputs.id = shareId;
+      } else {
+        const shareKey = `share:${entry.card.name}:${shareId}`;
+        const shareMeta = await stateStore.get(shareKey);
+        if (shareMeta?._inputs) {
+          inputs = shareMeta._inputs as Record<string, unknown>;
+        }
+      }
+
+      try {
+        trackCardUsage(entry.card.name);
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl);
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(renderSharePage(entry.card, result.html, mcpOptions.baseUrl));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end(`Error rendering shared card: ${err.message}`);
+      }
       return;
     }
 
@@ -1042,8 +1110,11 @@ function renderPreviewPage(
     .inputs-section { order: 0; }
     .card-output { order: 1; }
     @media (max-width: 640px) {
-      .container { grid-template-columns: 1fr; }
+      body { padding: 12px; }
+      .container { grid-template-columns: 1fr; gap: 0; }
+      .inputs-section { display: none; }
       .card-output { order: -1; }
+      .card-output .panel { box-shadow: none; padding: 0; background: transparent; }
     }
   </style>
 </head>
@@ -1065,6 +1136,43 @@ function renderPreviewPage(
         ${cardHtml}
       </div>
     </div>
+  </div>
+</body>
+</html>`;
+}
+
+/** Render a shared card as a full-screen page (no inputs panel). */
+function renderSharePage(
+  card: CardDefinition,
+  cardHtml: string,
+  baseUrl?: string
+): string {
+  const description = card.description || `Interactive ${card.name} card on HashDo`;
+
+  let ogTags = '';
+  if (baseUrl) {
+    ogTags = `
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${card.name} — HashDo">
+  <meta property="og:description" content="${description}">`;
+  }
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${card.name} — HashDo</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">${ogTags}
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .share-container { width: 100%; max-width: 480px; }
+  </style>
+</head>
+<body>
+  <div class="share-container">
+    ${cardHtml}
   </div>
 </body>
 </html>`;

@@ -11,6 +11,8 @@ export default defineCard({
   description:
     'Get current weather for any location. Call this when the user types #do/weather or asks for weather. If no location is given, auto-detects the user\'s location via IP geolocation.',
 
+  shareable: true,
+
   inputs: {
     city: {
       type: 'string',

@@ -154,6 +154,13 @@ export interface CardDefinition<S extends InputSchema = InputSchema> {
   stateKey?: (inputs: InputValues<S>) => string | undefined;
 
   /**
+   * When true, the card is shareable. A unique ID is derived from stateKey
+   * (or hashed inputs) and rendered as a clickable badge in a share header.
+   * Clicking the ID opens the card instance in a new browser tab.
+   */
+  shareable?: boolean;
+
+  /**
    * Template for rendering the card UI.
    * - String ending in .hbs/.html → file path relative to card directory
    * - Function → receives viewModel, returns HTML string

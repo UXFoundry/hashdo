@@ -14,6 +14,8 @@ export default defineCard({
   description:
     'Create or open an interactive poll. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a question or options, pass them; otherwise use defaults. To open an existing poll by ID (e.g. "#do/poll 71a1bc"), pass only the "id" parameter — do NOT pass question or options when opening by ID.',
 
+  shareable: true,
+
   inputs: {
     id: {
       type: 'string',
