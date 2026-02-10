@@ -232,7 +232,7 @@ export default defineCard({
           ${galleryHtml({
             images,
             title: `Photos of ${vm.cityName}`,
-            maxVisible: 6,
+            maxVisible: 8,
           })}
         </div>`
       : '';
@@ -546,7 +546,7 @@ async function fetchCityPhotos(
           (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png'))
         );
       })
-      .slice(0, 6);
+      .slice(0, 8);
 
     if (!imageNames.length) return [];
 

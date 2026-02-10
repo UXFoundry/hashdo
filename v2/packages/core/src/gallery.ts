@@ -23,6 +23,8 @@ export interface GalleryConfig {
   description?: string;
   /** Max images visible before showing "+N" overflow. Defaults to 8. */
   maxVisible?: number;
+  /** Number of grid columns. Defaults to 4. */
+  columns?: number;
 }
 
 /**
@@ -31,7 +33,7 @@ export interface GalleryConfig {
  * galleries appear on the same page.
  */
 export function galleryHtml(config: GalleryConfig): string {
-  const { images, title, description, maxVisible = 8 } = config;
+  const { images, title, description, maxVisible = 8, columns = 4 } = config;
   if (!images.length) return '';
 
   const uid = 'g' + Math.random().toString(36).slice(2, 8);
@@ -51,13 +53,13 @@ export function galleryHtml(config: GalleryConfig): string {
       const isPortrait = img.width / img.height < 0.9;
       const isOverflow = hiddenCount > 0 && i === visible.length - 1;
       const overflowOverlay = isOverflow
-        ? `<div style="position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(0,0,0,0.6);">
-            <span style="font-size:22px;font-weight:600;color:#fff;">+${hiddenCount + 1}</span>
+        ? `<div style="position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(0,0,0,0.6);">
+            <span style="font-size:18px;font-weight:600;color:#fff;">+${hiddenCount + 1}</span>
           </div>`
         : '';
 
       return `<div
-        style="position:relative;cursor:pointer;${isPortrait ? 'grid-row:span 2;' : 'aspect-ratio:1/1;'}overflow:hidden;border-radius:10px;background:#f3f4f6;"
+        style="position:relative;cursor:pointer;${isPortrait ? 'grid-row:span 2;' : 'aspect-ratio:1/1;'}overflow:hidden;border-radius:8px;background:#f3f4f6;"
         onclick="${uid}_open(${i})"
         role="listitem"
       >
@@ -72,8 +74,8 @@ export function galleryHtml(config: GalleryConfig): string {
           onmouseout="this.style.transform='scale(1)'"
         />
         <div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#9ca3af;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-          <span style="font-size:11px;text-align:center;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(img.alt)}</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span style="font-size:10px;text-align:center;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(img.alt)}</span>
         </div>
         ${overflowOverlay}
       </div>`;
@@ -146,7 +148,7 @@ export function galleryHtml(config: GalleryConfig): string {
 
   return `
     ${header}
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;" role="list">
+    <div style="display:grid;grid-template-columns:repeat(${columns},1fr);gap:4px;" role="list">
       ${cells}
     </div>
     ${lightbox}
