@@ -60,7 +60,7 @@ export async function renderCard<S extends InputSchema>(
   // 4. Wrap in card container (share button peeks from under the card edge)
   const wrappedHtml = shareBar
     ? `
-<div class="hashdo-card" data-card="${card.name}" data-share-id="${shareId}" style="position:relative;">
+<div class="hashdo-card" data-card="${card.name}" data-share-id="${shareId}" style="position:relative;width:fit-content;">
   ${shareBar}<div style="position:relative;z-index:1;">${html}</div>
 </div>`.trim()
     : `
