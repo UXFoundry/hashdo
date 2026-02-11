@@ -227,6 +227,38 @@ async function cmdPreview() {
       return;
     }
 
+    // Shared card image — /share/:name/:instanceId/image
+    const shareImageMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)\/image$/);
+    if (shareImageMatch) {
+      const entry = cardMap.get(shareImageMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`Card not found: ${shareImageMatch[1]}`);
+        return;
+      }
+      const instanceId = decodeURIComponent(shareImageMatch[2]);
+      const inputs = await resolveShareInputs(entry.card, instanceId, stateStore);
+      try {
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, baseUrl, userId);
+        const imageBuffer = await renderHtmlToImage(result.html);
+        if (!imageBuffer) {
+          res.writeHead(503, { 'Content-Type': 'text/plain' });
+          res.end('Screenshot renderer unavailable');
+          return;
+        }
+        res.writeHead(200, {
+          'Content-Type': 'image/png',
+          'Content-Length': String(imageBuffer.length),
+          'Cache-Control': 'public, max-age=60',
+        });
+        res.end(imageBuffer);
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end(`Error rendering shared card image: ${err.message}`);
+      }
+      return;
+    }
+
     // Shared card (full screen, no inputs panel)
     const shareMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)$/);
     if (shareMatch) {
@@ -243,7 +275,7 @@ async function cmdPreview() {
         trackCardUsage(entry.card.name);
         const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, baseUrl, userId);
         res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
-        res.end(renderSharePage(entry.card, result.html, baseUrl, inputs, instanceId));
+        res.end(renderSharePage(entry.card, result.html, baseUrl, instanceId));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error rendering shared card: ${err.message}`);
@@ -808,6 +840,38 @@ async function cmdStart() {
       return;
     }
 
+    // Shared card image — /share/:name/:instanceId/image
+    const shareImageMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)\/image$/);
+    if (shareImageMatch) {
+      const entry = cardMap.get(shareImageMatch[1]);
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`Card not found: ${shareImageMatch[1]}`);
+        return;
+      }
+      const instanceId = decodeURIComponent(shareImageMatch[2]);
+      const inputs = await resolveShareInputs(entry.card, instanceId, stateStore);
+      try {
+        const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
+        const imageBuffer = await renderHtmlToImage(result.html);
+        if (!imageBuffer) {
+          res.writeHead(503, { 'Content-Type': 'text/plain' });
+          res.end('Screenshot renderer unavailable');
+          return;
+        }
+        res.writeHead(200, {
+          'Content-Type': 'image/png',
+          'Content-Length': String(imageBuffer.length),
+          'Cache-Control': 'public, max-age=60',
+        });
+        res.end(imageBuffer);
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end(`Error rendering shared card image: ${err.message}`);
+      }
+      return;
+    }
+
     // Shared card (full screen, no inputs panel)
     const shareMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)$/);
     if (shareMatch) {
@@ -824,7 +888,7 @@ async function cmdStart() {
         trackCardUsage(entry.card.name);
         const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
         res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
-        res.end(renderSharePage(entry.card, result.html, mcpOptions.baseUrl));
+        res.end(renderSharePage(entry.card, result.html, mcpOptions.baseUrl, instanceId));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error rendering shared card: ${err.message}`);
@@ -1230,23 +1294,14 @@ function renderSharePage(
   card: CardDefinition,
   cardHtml: string,
   baseUrl?: string,
-  inputs?: Record<string, unknown>,
   instanceId?: string
 ): string {
   const description = card.description || `Interactive ${card.name} card on HashDo`;
 
   let ogTags = '';
-  if (baseUrl) {
-    const queryParts = inputs
-      ? Object.entries(inputs)
-          .filter(([, v]) => v !== '' && v !== undefined)
-          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-          .join('&')
-      : '';
-    const imageUrl = `${baseUrl}/api/cards/${encodeURIComponent(card.name)}/image${queryParts ? '?' + queryParts : ''}`;
-    const shareUrl = instanceId
-      ? `${baseUrl}/share/${encodeURIComponent(card.name)}/${encodeURIComponent(instanceId)}`
-      : `${baseUrl}/card/${encodeURIComponent(card.name)}`;
+  if (baseUrl && instanceId) {
+    const imageUrl = `${baseUrl}/share/${encodeURIComponent(card.name)}/${encodeURIComponent(instanceId)}/image`;
+    const shareUrl = `${baseUrl}/share/${encodeURIComponent(card.name)}/${encodeURIComponent(instanceId)}`;
     ogTags = `
   <meta property="og:type" content="website">
   <meta property="og:title" content="${card.name} — HashDo">
