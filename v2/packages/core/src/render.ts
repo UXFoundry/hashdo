@@ -60,11 +60,11 @@ export async function renderCard<S extends InputSchema>(
   // 4. Wrap in card container (share button peeks from under the card edge)
   const wrappedHtml = shareBar
     ? `
-<div class="hashdo-card" data-card="${card.name}" data-share-id="${shareId}" style="position:relative;width:fit-content;">
+<div class="hashdo-card" data-card="${card.name}" data-share-id="${shareId}" style="position:relative;width:fit-content;margin:8px;">
   ${shareBar}<div style="position:relative;z-index:1;">${html}</div>
 </div>`.trim()
     : `
-<div class="hashdo-card" data-card="${card.name}">
+<div class="hashdo-card" data-card="${card.name}" style="margin:8px;">
   ${html}
 </div>`.trim();
 
@@ -113,7 +113,7 @@ function renderErrorCard(cardName: string, message: string): string {
   const tag = cardName.startsWith('do-') ? `#do/${cardName.slice(3)}` : `#${cardName}`;
   const escaped = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `
-<div class="hashdo-card" data-card="${cardName}">
+<div class="hashdo-card" data-card="${cardName}" style="margin:8px;">
   <div style="font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;max-width:400px;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <div style="padding:24px 24px 20px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
