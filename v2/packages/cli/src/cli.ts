@@ -607,6 +607,14 @@ async function cmdStart() {
     const [userId, needsSetCookie] = resolveUserId(req);
     const cookieHeader = needsSetCookie ? { 'Set-Cookie': makeSetCookie(userId) } : {};
 
+    // OpenAI domain verification
+    if (url.pathname === '/.well-known/openai-apps-challenge' && req.method === 'GET') {
+      const token = process.env['OPENAI_APPS_CHALLENGE_TOKEN'] ?? '';
+      res.writeHead(token ? 200 : 404, { 'Content-Type': 'text/plain' });
+      res.end(token);
+      return;
+    }
+
     // MCP endpoint
     if (url.pathname === '/mcp') {
       // Streamable HTTP only accepts POST (and GET for SSE with sessions).
