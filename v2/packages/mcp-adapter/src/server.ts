@@ -281,6 +281,12 @@ function registerCardTool(
         await stateStore.set(cardKey, result.state);
       }
 
+      // Persist share mapping so /share/:cardName/:shareId can resolve inputs
+      if (card.shareable && result.shareId) {
+        const shareKey = `share:${card.name}:${result.shareId}`;
+        await stateStore.set(shareKey, { _inputs: inputs });
+      }
+
       // Track usage
       const usageKey = `usage:${card.name}`;
       const usageState = await stateStore.get(usageKey);

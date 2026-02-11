@@ -10,7 +10,7 @@
  */
 
 import 'dotenv/config';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
@@ -459,28 +459,6 @@ function stableKey(obj: Record<string, unknown>): string {
   return Buffer.from(sorted).toString('base64url');
 }
 
-/**
- * Compute the share ID for a shareable card (mirrors logic in @hashdo/core render.ts).
- * Uses stateKey if available, otherwise hashes the inputs.
- */
-function computeShareId(card: CardDefinition, inputs: Record<string, unknown>): string | undefined {
-  if (!card.shareable) return undefined;
-
-  if (card.stateKey) {
-    const key = card.stateKey(inputs as any, undefined); // share IDs must not be per-user
-    if (key) {
-      const colonIdx = key.lastIndexOf(':');
-      return colonIdx >= 0 ? key.slice(colonIdx + 1) : key;
-    }
-  }
-
-  const sorted = Object.keys(inputs)
-    .sort()
-    .map((k) => `${k}=${inputs[k]}`)
-    .join('&');
-  return createHash('sha256').update(sorted).digest('hex').slice(0, 6);
-}
-
 /** Render a card with state loaded from the store, and persist updated state. */
 async function renderCardWithState(
   card: CardDefinition,
@@ -503,12 +481,9 @@ async function renderCardWithState(
   }
 
   // For shareable cards, persist a share mapping so the /share route can look up inputs
-  if (card.shareable) {
-    const shareId = computeShareId(card, inputs);
-    if (shareId) {
-      const shareKey = `share:${card.name}:${shareId}`;
-      await store.set(shareKey, { _inputs: inputs });
-    }
+  if (card.shareable && result.shareId) {
+    const shareKey = `share:${card.name}:${result.shareId}`;
+    await store.set(shareKey, { _inputs: inputs });
   }
 
   return result;
