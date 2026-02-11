@@ -232,7 +232,7 @@ export default defineCard({
           ${galleryHtml({
             images,
             title: `Photos of ${vm.cityName}`,
-            maxVisible: 8,
+            maxVisible: 4,
             theme: 'dark',
           })}
         </div>`

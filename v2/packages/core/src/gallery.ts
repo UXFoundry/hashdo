@@ -21,7 +21,7 @@ export interface GalleryConfig {
   images: GalleryImage[];
   title?: string;
   description?: string;
-  /** Max images visible before showing "+N" overflow. Defaults to 8. */
+  /** Max images visible in the grid before showing "+N" overflow. Defaults to 4 (one row). */
   maxVisible?: number;
   /** Number of grid columns. Defaults to 4. */
   columns?: number;
@@ -35,7 +35,7 @@ export interface GalleryConfig {
  * galleries appear on the same page.
  */
 export function galleryHtml(config: GalleryConfig): string {
-  const { images, title, description, maxVisible = 8, columns = 4, theme = 'light' } = config;
+  const { images, title, description, maxVisible = 4, columns = 4, theme = 'light' } = config;
   if (!images.length) return '';
 
   const uid = 'g' + Math.random().toString(36).slice(2, 8);
