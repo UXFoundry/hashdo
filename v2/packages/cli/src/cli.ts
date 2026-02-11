@@ -1195,10 +1195,10 @@ function renderPreviewPage(
     .card-output { order: 1; }
     @media (max-width: 640px) {
       body { padding: 12px; }
-      .container { grid-template-columns: 1fr; gap: 0; }
-      .inputs-section { display: none; }
+      .container { grid-template-columns: 1fr; gap: 16px; }
       .card-output { order: -1; }
       .card-output .panel { box-shadow: none; padding: 0; background: transparent; }
+      .inputs-section .back { display: none; }
     }
   </style>
 </head>
