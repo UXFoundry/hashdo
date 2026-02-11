@@ -211,6 +211,15 @@ async function cmdServe() {
     cards: discovered.map((d) => d.card),
     cardDirs,
     stateStore,
+    csp: {
+      resourceDomains: [
+        'api.qrserver.com',
+        'covers.openlibrary.org',
+        'avatars.githubusercontent.com',
+        'assets.coingecko.com',
+        'upload.wikimedia.org',
+      ],
+    },
   });
 }
 
