@@ -1,13 +1,4 @@
-import { createHash } from 'node:crypto';
 import { defineCard } from '@hashdo/core';
-
-/** Derive a deterministic poll ID from question + options (6 hex chars). */
-function derivePollId(question: string, options: string): string {
-  return createHash('sha256')
-    .update(`${question}|${options}`)
-    .digest('hex')
-    .slice(0, 6);
-}
 
 export default defineCard({
   name: 'do-poll',
@@ -15,6 +6,7 @@ export default defineCard({
     'Create or open an interactive poll. All parameters have defaults — call this tool immediately without asking the user for parameters. If the user mentions a question or options, pass them; otherwise use defaults. To open an existing poll by ID (e.g. "#do/poll 71a1bc"), pass only the "id" parameter — do NOT pass question or options when opening by ID.',
 
   shareable: true,
+  uniqueInstance: true,
 
   inputs: {
     id: {
@@ -46,11 +38,7 @@ export default defineCard({
 
   stateKey: (inputs) => {
     const id = inputs.id as string | undefined;
-    if (id) return `id:${id}`;
-    const question = inputs.question as string | undefined;
-    const options = inputs.options as string | undefined;
-    if (question && options) return `id:${derivePollId(question, options)}`;
-    return undefined;
+    return id ? `id:${id}` : undefined;
   },
 
   async getData({ inputs, rawInputs, state, baseUrl }) {
@@ -58,13 +46,9 @@ export default defineCard({
     const explicitQuestion = rawInputs.question as string | undefined;
     const explicitOptions = rawInputs.options as string | undefined;
 
-    // Determine poll ID — use explicit id, stored id, or derive from question+options
-    const pollId =
-      inputId ||
-      (state.pollId as string) ||
-      (explicitQuestion && explicitOptions
-        ? derivePollId(explicitQuestion, explicitOptions)
-        : undefined);
+    // Determine poll ID — use explicit id or stored id
+    // (prepareInputs auto-generates an id for new polls when uniqueInstance is true)
+    const pollId = inputId || (state.pollId as string);
 
     if (!pollId) {
       throw new Error(

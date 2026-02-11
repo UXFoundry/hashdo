@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
-import { type CardDefinition, type StateStore, renderCard } from '@hashdo/core';
+import { type CardDefinition, type StateStore, renderCard, resolveInstance, prepareInputs } from '@hashdo/core';
 import { serveMcp, handleMcpRequest } from '@hashdo/mcp-adapter';
 import { warmupBrowser, renderHtmlToImage } from '@hashdo/screenshot';
 import { generateOpenApiSpec } from './openapi.js';
@@ -236,20 +236,8 @@ async function cmdPreview() {
         res.end(`Card not found: ${shareMatch[1]}`);
         return;
       }
-      const shareId = decodeURIComponent(shareMatch[2]);
-
-      let inputs: Record<string, unknown> = {};
-      if ('id' in entry.card.inputs) {
-        inputs.id = shareId;
-      } else if ('seed' in entry.card.inputs) {
-        inputs.seed = shareId;
-      } else {
-        const shareKey = `share:${entry.card.name}:${shareId}`;
-        const shareMeta = await stateStore.get(shareKey);
-        if (shareMeta?._inputs) {
-          inputs = shareMeta._inputs as Record<string, unknown>;
-        }
-      }
+      const instanceId = decodeURIComponent(shareMatch[2]);
+      const inputs = await resolveShareInputs(entry.card, instanceId, stateStore);
 
       try {
         trackCardUsage(entry.card.name);
@@ -374,11 +362,7 @@ async function cmdPreview() {
         }
       }
 
-      const customKey = entry.card.stateKey?.(cardInputs as any, userId);
-      const cardKey = customKey
-        ? `card:${entry.card.name}:${customKey}`
-        : `card:${entry.card.name}:${stableKey(cardInputs)}`;
-
+      const { cardKey } = resolveInstance(entry.card, cardInputs as any, userId);
       const state = (await stateStore.get(cardKey)) ?? {};
 
       try {
@@ -450,16 +434,29 @@ function parseInputsFromParams(searchParams: URLSearchParams): Record<string, un
   return inputs;
 }
 
-/** Compute a stable state key from input values (mirrors mcp-adapter logic). */
-function stableKey(obj: Record<string, unknown>): string {
-  const sorted = Object.keys(obj)
-    .sort()
-    .map((k) => `${k}=${obj[k]}`)
-    .join('&');
-  return Buffer.from(sorted).toString('base64url');
+/**
+ * Resolve inputs for a share URL by looking up stored instance data,
+ * falling back to heuristic resolution for backward compatibility.
+ */
+async function resolveShareInputs(
+  card: CardDefinition,
+  instanceId: string,
+  store: StateStore,
+): Promise<Record<string, unknown>> {
+  // Primary: look up stored instance inputs
+  const instanceKey = `share:${card.name}:${instanceId}`;
+  const instanceMeta = await store.get(instanceKey);
+  if (instanceMeta?._inputs) {
+    return instanceMeta._inputs as Record<string, unknown>;
+  }
+
+  // Fallback heuristics for backward compat (cards rendered before this change)
+  if ('id' in card.inputs) return { id: instanceId };
+  if ('seed' in card.inputs) return { seed: instanceId };
+  return {};
 }
 
-/** Render a card with state loaded from the store, and persist updated state. */
+/** Render a card with state loaded from the store, and persist updated state + instance inputs. */
 async function renderCardWithState(
   card: CardDefinition,
   inputs: Record<string, unknown>,
@@ -468,23 +465,19 @@ async function renderCardWithState(
   baseUrl?: string,
   userId?: string,
 ) {
-  const customKey = card.stateKey?.(inputs as any, userId);
-  const cardKey = customKey
-    ? `card:${card.name}:${customKey}`
-    : `card:${card.name}:${stableKey(inputs)}`;
+  const prepared = prepareInputs(card, inputs);
+  const { instanceId, cardKey } = resolveInstance(card, prepared as any, userId);
 
   const state = (await store.get(cardKey)) ?? {};
-  const result = await renderCard(card, inputs as any, state, cardDir, { baseUrl, userId });
+  const result = await renderCard(card, prepared as any, state, cardDir, { baseUrl, userId });
 
   if (result.state && Object.keys(result.state).length > 0) {
     await store.set(cardKey, result.state);
   }
 
-  // For shareable cards, persist a share mapping so the /share route can look up inputs
-  if (card.shareable && result.shareId) {
-    const shareKey = `share:${card.name}:${result.shareId}`;
-    await store.set(shareKey, { _inputs: inputs });
-  }
+  // Persist instance inputs so the /share route can resolve this instance
+  const instanceKey = `share:${card.name}:${instanceId}`;
+  await store.set(instanceKey, { _inputs: prepared });
 
   return result;
 }
@@ -685,12 +678,7 @@ async function cmdStart() {
         }
       }
 
-      // Compute state key (same logic as MCP adapter's registerActionTools)
-      const customKey = entry.card.stateKey?.(cardInputs as any, userId);
-      const cardKey = customKey
-        ? `card:${entry.card.name}:${customKey}`
-        : `card:${entry.card.name}:${stableKey(cardInputs)}`;
-
+      const { cardKey } = resolveInstance(entry.card, cardInputs as any, userId);
       const state = (await stateStore.get(cardKey)) ?? {};
 
       try {
@@ -829,22 +817,8 @@ async function cmdStart() {
         res.end(`Card not found: ${shareMatch[1]}`);
         return;
       }
-      const shareId = decodeURIComponent(shareMatch[2]);
-
-      // Resolve inputs: for cards with an 'id' or 'seed' input, pass the share ID directly;
-      // otherwise look up stored inputs from the share mapping.
-      let inputs: Record<string, unknown> = {};
-      if ('id' in entry.card.inputs) {
-        inputs.id = shareId;
-      } else if ('seed' in entry.card.inputs) {
-        inputs.seed = shareId;
-      } else {
-        const shareKey = `share:${entry.card.name}:${shareId}`;
-        const shareMeta = await stateStore.get(shareKey);
-        if (shareMeta?._inputs) {
-          inputs = shareMeta._inputs as Record<string, unknown>;
-        }
-      }
+      const instanceId = decodeURIComponent(shareMatch[2]);
+      const inputs = await resolveShareInputs(entry.card, instanceId, stateStore);
 
       try {
         trackCardUsage(entry.card.name);

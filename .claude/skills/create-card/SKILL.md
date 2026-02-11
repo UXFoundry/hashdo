@@ -16,7 +16,8 @@ Before writing any code, confirm with the user:
 3. **Inputs** — what parameters does the user provide? Which are optional with sensible defaults?
 4. **Actions** — any interactive state mutations? (favorites, toggles, votes, etc.)
 5. **Shareable?** — should users be able to share a link to a specific card instance?
-6. **Category** — is this a top-level card (`demo-cards/<name>/`) or nested under a category (`demo-cards/game/<name>/`)?
+6. **Unique instances?** — should each invocation create a new instance even with the same inputs? (e.g. polls, games). If yes, set `uniqueInstance: true` and add an `id` input.
+7. **Category** — is this a top-level card (`demo-cards/<name>/`) or nested under a category (`demo-cards/game/<name>/`)?
 
 If the user provides a card name and description, infer reasonable answers for the rest and confirm before proceeding.
 
@@ -97,10 +98,17 @@ export default defineCard({
 
   shareable: true, // or omit if not shareable
 
-  // Optional: custom state key for user-specific state
+  // Optional: unique instances — every invocation creates a new instance (e.g. polls, games)
+  // uniqueInstance: true,  // requires an `id` input; system auto-generates id when omitted
+  // stateKey: (inputs) => inputs.id ? `id:${inputs.id}` : undefined,
+
+  // Optional: per-user state — isolates state per anonymous user
   // stateKey: (_inputs, userId) => userId ? `user:${userId}` : undefined,
 
   inputs: {
+    // For uniqueInstance cards, always include an id input:
+    // id: { type: 'string', required: false, description: 'Instance ID. Omit to create new.' },
+
     // Every input should have a sensible default when possible
     exampleInput: {
       type: 'string',       // 'string' | 'number' | 'boolean' | 'date' | 'url' | 'email' | 'json'
@@ -217,11 +225,13 @@ export default defineCard({
 - Use `system-ui, sans-serif` font stack
 - Design for both light and dark backgrounds
 
-### State
+### State & Instances
 - `CardState` is `Record<string, unknown>` — arbitrary JSON
-- State persists across renders via a key derived from inputs (or custom `stateKey`)
+- Every render produces an **instanceId** — a short, deterministic, URL-safe identifier
+- State persists per instance via `cardKey` = `card:{name}:{stateKey || hash}`
 - Always spread existing state: `{ ...state, newField: value }`
-- Track counters, lists, timestamps as needed
+- Set `uniqueInstance: true` + an `id` input when each invocation should create a new instance (polls, games). The system auto-generates `id` via `prepareInputs()` when not provided.
+- For per-user state, use `stateKey: (_inputs, userId) => userId ? \`user:${`\${userId}`}\` : undefined`
 
 ### Error Handling
 - Throw `new Error('descriptive message')` from `getData` — the framework renders an error card
@@ -265,8 +275,13 @@ Store an array in state, toggle membership in an action handler. Return count in
 ### Accent colors by category:
 Map a data field (subject, language, type) to gradient colors for visual variety.
 
-### Deterministic sharing (poll):
-Use `stateKey` to derive a stable ID from content (e.g. hash of question + options) so the same content always maps to the same shareable URL.
+### Unique instances (poll, game):
+Set `uniqueInstance: true` and add an `id` input. The system auto-generates a random 6-char hex `id` for new instances. Users can reopen an existing instance by passing the `id` directly. Define `stateKey` to use the `id`:
+```typescript
+uniqueInstance: true,
+inputs: { id: { type: 'string', required: false, description: 'Instance ID. Omit to create new.' }, ... },
+stateKey: (inputs) => inputs.id ? `id:${inputs.id}` : undefined,
+```
 
 ### User-specific state (book, reading list):
 Set `stateKey: (_inputs, userId) => userId ? \`user:${`\${userId}`}\` : undefined` to isolate state per anonymous user.

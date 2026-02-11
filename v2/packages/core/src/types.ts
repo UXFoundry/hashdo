@@ -163,6 +163,14 @@ export interface CardDefinition<S extends InputSchema = InputSchema> {
   shareable?: boolean;
 
   /**
+   * When true, each invocation without an explicit `id` input creates a new
+   * unique instance (a random ID is auto-generated and injected as `inputs.id`).
+   * Use this for cards like polls where identical inputs should NOT share state.
+   * The card must declare an `id` input in its schema.
+   */
+  uniqueInstance?: boolean;
+
+  /**
    * Template for rendering the card UI.
    * - String ending in .hbs/.html → file path relative to card directory
    * - Function → receives viewModel, returns HTML string
