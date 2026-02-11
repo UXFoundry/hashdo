@@ -21,6 +21,26 @@ import { generateOpenApiSpec } from './openapi.js';
 import { createStateStore } from './create-state-store.js';
 
 // ---------------------------------------------------------------------------
+// In-memory image cache (avoids repeated Puppeteer renders for social crawlers)
+// ---------------------------------------------------------------------------
+const IMAGE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const imageCache = new Map<string, { buffer: Buffer; expiresAt: number }>();
+
+function getCachedImage(key: string): Buffer | undefined {
+  const entry = imageCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    imageCache.delete(key);
+    return undefined;
+  }
+  return entry.buffer;
+}
+
+function setCachedImage(key: string, buffer: Buffer): void {
+  imageCache.set(key, { buffer, expiresAt: Date.now() + IMAGE_CACHE_TTL_MS });
+}
+
+// ---------------------------------------------------------------------------
 // Anonymous user ID (cookie-based)
 // ---------------------------------------------------------------------------
 const COOKIE_NAME = 'hd_uid';
@@ -230,13 +250,25 @@ async function cmdPreview() {
     // Shared card image — /share/:name/:instanceId/image
     const shareImageMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)\/image$/);
     if (shareImageMatch) {
-      const entry = cardMap.get(shareImageMatch[1]);
+      const cardName = shareImageMatch[1];
+      const entry = cardMap.get(cardName);
       if (!entry) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end(`Card not found: ${shareImageMatch[1]}`);
+        res.end(`Card not found: ${cardName}`);
         return;
       }
       const instanceId = decodeURIComponent(shareImageMatch[2]);
+      const cacheKey = `${cardName}:${instanceId}`;
+      const cached = getCachedImage(cacheKey);
+      if (cached) {
+        res.writeHead(200, {
+          'Content-Type': 'image/png',
+          'Content-Length': String(cached.length),
+          'Cache-Control': 'public, max-age=300',
+        });
+        res.end(cached);
+        return;
+      }
       const inputs = await resolveShareInputs(entry.card, instanceId, stateStore);
       try {
         const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, baseUrl, userId);
@@ -246,10 +278,11 @@ async function cmdPreview() {
           res.end('Screenshot renderer unavailable');
           return;
         }
+        setCachedImage(cacheKey, imageBuffer);
         res.writeHead(200, {
           'Content-Type': 'image/png',
           'Content-Length': String(imageBuffer.length),
-          'Cache-Control': 'public, max-age=60',
+          'Cache-Control': 'public, max-age=300',
         });
         res.end(imageBuffer);
       } catch (err: any) {
@@ -843,13 +876,25 @@ async function cmdStart() {
     // Shared card image — /share/:name/:instanceId/image
     const shareImageMatch = url.pathname.match(/^\/share\/([^/]+)\/([^/]+)\/image$/);
     if (shareImageMatch) {
-      const entry = cardMap.get(shareImageMatch[1]);
+      const cardName = shareImageMatch[1];
+      const entry = cardMap.get(cardName);
       if (!entry) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end(`Card not found: ${shareImageMatch[1]}`);
+        res.end(`Card not found: ${cardName}`);
         return;
       }
       const instanceId = decodeURIComponent(shareImageMatch[2]);
+      const cacheKey = `${cardName}:${instanceId}`;
+      const cached = getCachedImage(cacheKey);
+      if (cached) {
+        res.writeHead(200, {
+          'Content-Type': 'image/png',
+          'Content-Length': String(cached.length),
+          'Cache-Control': 'public, max-age=300',
+        });
+        res.end(cached);
+        return;
+      }
       const inputs = await resolveShareInputs(entry.card, instanceId, stateStore);
       try {
         const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, mcpOptions.baseUrl, userId);
@@ -859,10 +904,11 @@ async function cmdStart() {
           res.end('Screenshot renderer unavailable');
           return;
         }
+        setCachedImage(cacheKey, imageBuffer);
         res.writeHead(200, {
           'Content-Type': 'image/png',
           'Content-Length': String(imageBuffer.length),
-          'Cache-Control': 'public, max-age=60',
+          'Cache-Control': 'public, max-age=300',
         });
         res.end(imageBuffer);
       } catch (err: any) {
