@@ -104,8 +104,12 @@ function renderShareBar(cardName: string, shareId: string, baseUrl?: string): st
     ? `${baseUrl}/share/${encodeURIComponent(cardName)}/${encodeURIComponent(shareId)}`
     : `#`;
   const shareSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
+  // onclick handler tries multiple approaches to open the share URL.
+  // In sandboxed iframes (ChatGPT, Claude MCP Apps), target="_blank" is
+  // silently blocked. We fall through: window.open → top navigation → self navigation.
+  const onclick = `event.preventDefault();var u=this.href;if(u==='#')return;try{var w=window.open(u,'_blank');if(w)return}catch(e){}try{window.top.location.href=u;return}catch(e){}window.location.href=u`;
   return `
-  <a href="${shareUrl}" target="_blank" rel="noopener" title="Share this card" class="hashdo-share-btn" style="position:absolute;top:-9px;right:-9px;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.9);color:#9ca3af;text-decoration:none;opacity:0.4;transition:all .2s ease;z-index:0;border:none;box-shadow:0 1px 3px rgba(0,0,0,0.1);" onmouseover="this.style.opacity='1';this.style.zIndex='20';this.style.color='#6366f1';this.style.transform='scale(1.15)';this.style.boxShadow='0 3px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.opacity='0.4';this.style.zIndex='0';this.style.color='#9ca3af';this.style.transform='scale(1)';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">${shareSvg}</a>`;
+  <a href="${shareUrl}" target="_blank" rel="noopener" title="Share this card" class="hashdo-share-btn" onclick="${onclick}" style="position:absolute;top:-9px;right:-9px;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.9);color:#9ca3af;text-decoration:none;opacity:0.4;transition:all .2s ease;z-index:0;border:none;box-shadow:0 1px 3px rgba(0,0,0,0.1);" onmouseover="this.style.opacity='1';this.style.zIndex='20';this.style.color='#6366f1';this.style.transform='scale(1.15)';this.style.boxShadow='0 3px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.opacity='0.4';this.style.zIndex='0';this.style.color='#9ca3af';this.style.transform='scale(1)';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'">${shareSvg}</a>`;
 }
 
 /** Render a styled error card when getData fails. */
