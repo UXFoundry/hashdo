@@ -615,21 +615,17 @@ async function cmdStart() {
       return;
     }
 
-    // MCP endpoint
+    // MCP endpoint — let the SDK transport handle POST, GET (SSE), and DELETE
     if (url.pathname === '/mcp') {
-      // Streamable HTTP only accepts POST (and GET for SSE with sessions).
-      // Return a helpful 405 for GET/HEAD so health-checks and URL validators
-      // see the endpoint is alive rather than a confusing 406.
-      if (req.method === 'GET' || req.method === 'HEAD') {
-        res.writeHead(405, {
-          Allow: 'POST',
-          'Content-Type': 'application/json',
+      // CORS preflight for MCP endpoint
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Accept, Mcp-Session-Id',
+          'Access-Control-Expose-Headers': 'Mcp-Session-Id',
         });
-        res.end(JSON.stringify({
-          jsonrpc: '2.0',
-          error: { code: -32000, message: 'MCP endpoint accepts POST only. Send a JSON-RPC request with Accept: application/json, text/event-stream.' },
-          id: null,
-        }));
+        res.end();
         return;
       }
       try {
