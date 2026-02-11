@@ -2,6 +2,7 @@
 
 export { defineCard } from './define-card.js';
 export { renderCard } from './render.js';
+export { computeInstanceId, resolveInstance, stableKey, prepareInputs } from './instance.js';
 export { MemoryStateStore } from './state-store.js';
 export { galleryHtml } from './gallery.js';
 export type { GalleryImage, GalleryConfig } from './gallery.js';

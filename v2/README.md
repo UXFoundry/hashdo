@@ -98,11 +98,50 @@ Each card automatically becomes:
 | Card state     | Persisted state | Survives across renders, enables conversations |
 | Webhooks       | Push updates   | External events update card state |
 
+## Card Instances
+
+Every card render produces an **instance** — identified by a short, deterministic, URL-safe `instanceId`. Same card + same inputs = same instance.
+
+```
+card inputs → instanceId (6-char hex) → state store key → persisted state
+```
+
+- **`instanceId`** is computed from `stateKey(inputs)` or a hash of all inputs. It's always user-independent.
+- **`cardKey`** is the full state-store key: `card:{name}:{stateKey || hash}`. May include `userId` for per-user state.
+- **Share URL**: `/share/{cardName}/{instanceId}` — loads the instance with its persisted state.
+
+### Instance Modes
+
+**Deterministic** (default) — same inputs always map to the same instance. Good for lookup cards:
+```typescript
+// Weather for "Tokyo" is always the same instance
+defineCard({ name: 'do-weather', inputs: { city: { ... } } })
+```
+
+**Unique** (`uniqueInstance: true`) — every invocation without an explicit `id` creates a new instance. Good for creation cards:
+```typescript
+// Each poll is unique, even with the same question
+defineCard({
+  name: 'do-poll',
+  uniqueInstance: true,
+  inputs: { id: { type: 'string', required: false }, question: { ... } },
+  stateKey: (inputs) => inputs.id ? `id:${inputs.id}` : undefined,
+})
+```
+
+**Per-user** — use `userId` in `stateKey` to isolate state per user within the same instance:
+```typescript
+stateKey: (_inputs, userId) => userId ? `user:${userId}` : undefined
+```
+
 ## Packages
 
 ### @hashdo/core
 - `defineCard()` — Type-safe card definition with full inference
-- `renderCard()` — Render a card to HTML given inputs + state (applies input defaults automatically)
+- `renderCard()` — Render a card to HTML given inputs + state (returns `instanceId` alongside html/state/viewModel)
+- `resolveInstance()` — Compute `{ instanceId, cardKey }` from card + inputs + optional userId
+- `computeInstanceId()` — Short URL-safe instance ID (user-independent)
+- `prepareInputs()` — Auto-generate `id` for `uniqueInstance` cards
 - `MemoryStateStore` — In-memory state (swap for Redis/Postgres in production)
 - Full TypeScript types for inputs, actions, state, webhooks
 

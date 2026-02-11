@@ -9,6 +9,8 @@ import {
   type StateStore,
   MemoryStateStore,
   renderCard,
+  resolveInstance,
+  prepareInputs,
 } from '@hashdo/core';
 import { renderHtmlToImage } from '@hashdo/screenshot';
 import {
@@ -264,28 +266,23 @@ function registerCardTool(
       },
     },
     async (params: Record<string, unknown>) => {
-      const inputs = params as any;
-      const customKey = card.stateKey?.(inputs);
-      const cardKey = customKey
-        ? `card:${card.name}:${customKey}`
-        : `card:${card.name}:${stableKey(inputs)}`;
+      const inputs = prepareInputs(card, params);
+      const { instanceId, cardKey } = resolveInstance(card, inputs as any);
 
       // Load existing state
       const state = (await stateStore.get(cardKey)) ?? {};
 
       // Render card
-      const result = await renderCard(card, inputs, state, cardDir, { baseUrl });
+      const result = await renderCard(card, inputs as any, state, cardDir, { baseUrl });
 
       // Persist updated state
       if (result.state && Object.keys(result.state).length > 0) {
         await stateStore.set(cardKey, result.state);
       }
 
-      // Persist share mapping so /share/:cardName/:shareId can resolve inputs
-      if (card.shareable && result.shareId) {
-        const shareKey = `share:${card.name}:${result.shareId}`;
-        await stateStore.set(shareKey, { _inputs: inputs });
-      }
+      // Persist instance inputs so share URLs work for MCP-first renders
+      const instanceKey = `share:${card.name}:${instanceId}`;
+      await stateStore.set(instanceKey, { _inputs: inputs });
 
       // Track usage
       const usageKey = `usage:${card.name}`;
@@ -378,10 +375,7 @@ function registerActionTools(
           }
         }
 
-        const customKey = card.stateKey?.(cardInputs as any);
-        const cardKey = customKey
-          ? `card:${card.name}:${customKey}`
-          : `card:${card.name}:${stableKey(cardInputs)}`;
+        const { cardKey } = resolveInstance(card, cardInputs as any);
         const state = (await stateStore.get(cardKey)) ?? {};
 
         const result = await action.handler({
@@ -460,17 +454,6 @@ function registerListTool(
       };
     }
   );
-}
-
-/**
- * Create a stable key from input values for state lookups.
- */
-function stableKey(obj: Record<string, unknown>): string {
-  const sorted = Object.keys(obj)
-    .sort()
-    .map((k) => `${k}=${obj[k]}`)
-    .join('&');
-  return Buffer.from(sorted).toString('base64url');
 }
 
 /**
