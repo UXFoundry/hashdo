@@ -243,7 +243,7 @@ async function cmdPreview() {
         trackCardUsage(entry.card.name);
         const result = await renderCardWithState(entry.card, inputs, stateStore, entry.dir, baseUrl, userId);
         res.writeHead(200, { 'Content-Type': 'text/html', ...cookieHeader });
-        res.end(renderSharePage(entry.card, result.html, baseUrl));
+        res.end(renderSharePage(entry.card, result.html, baseUrl, inputs, instanceId));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end(`Error rendering shared card: ${err.message}`);
@@ -1229,16 +1229,34 @@ function renderPreviewPage(
 function renderSharePage(
   card: CardDefinition,
   cardHtml: string,
-  baseUrl?: string
+  baseUrl?: string,
+  inputs?: Record<string, unknown>,
+  instanceId?: string
 ): string {
   const description = card.description || `Interactive ${card.name} card on HashDo`;
 
   let ogTags = '';
   if (baseUrl) {
+    const queryParts = inputs
+      ? Object.entries(inputs)
+          .filter(([, v]) => v !== '' && v !== undefined)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+          .join('&')
+      : '';
+    const imageUrl = `${baseUrl}/api/cards/${encodeURIComponent(card.name)}/image${queryParts ? '?' + queryParts : ''}`;
+    const shareUrl = instanceId
+      ? `${baseUrl}/share/${encodeURIComponent(card.name)}/${encodeURIComponent(instanceId)}`
+      : `${baseUrl}/card/${encodeURIComponent(card.name)}`;
     ogTags = `
   <meta property="og:type" content="website">
   <meta property="og:title" content="${card.name} — HashDo">
-  <meta property="og:description" content="${description}">`;
+  <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:url" content="${shareUrl}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${card.name} — HashDo">
+  <meta name="twitter:description" content="${description}">
+  <meta name="twitter:image" content="${imageUrl}">`;
   }
 
   return `<!DOCTYPE html>
