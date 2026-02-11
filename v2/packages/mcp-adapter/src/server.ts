@@ -37,6 +37,15 @@ export interface McpCardServerOptions {
   enableScreenshots?: boolean;
   /** Base URL of the HashDo server (used for CSP connectDomains in MCP Apps widgets) */
   baseUrl?: string;
+  /** Additional CSP domains for the MCP Apps widget sandbox */
+  csp?: {
+    /** Extra domains the widget JS may fetch() from (added alongside baseUrl host) */
+    connectDomains?: string[];
+    /** Domains for static assets (images, fonts, scripts) loaded in card HTML */
+    resourceDomains?: string[];
+    /** Domains the widget may embed as iframes (triggers stricter review) */
+    frameDomains?: string[];
+  };
 }
 
 /** URI for the shared card widget resource */
@@ -153,8 +162,8 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   const { name, version, cards, cardDirs = {}, enableScreenshots = false } = options;
   const stateStore = options.stateStore ?? new MemoryStateStore();
 
-  // Parse hostname from baseUrl for CSP connectDomains (allows widget fetch)
-  const connectDomains: string[] = [];
+  // Build CSP domains for the MCP Apps widget sandbox
+  const connectDomains: string[] = [...(options.csp?.connectDomains ?? [])];
   if (options.baseUrl) {
     try {
       const parsed = new URL(options.baseUrl);
@@ -163,6 +172,8 @@ export function createMcpCardServer(options: McpCardServerOptions) {
       // Invalid URL, skip
     }
   }
+  const resourceDomains: string[] = [...(options.csp?.resourceDomains ?? [])];
+  const frameDomains: string[] = [...(options.csp?.frameDomains ?? [])];
 
   const server = new McpServer(
     { name, version },
@@ -184,8 +195,9 @@ export function createMcpCardServer(options: McpCardServerOptions) {
           ui: {
             domain: 'hashdo',
             csp: {
-              resourceDomains: [],
               connectDomains,
+              resourceDomains,
+              ...(frameDomains.length > 0 ? { frameDomains } : {}),
             },
           },
         },
