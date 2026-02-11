@@ -20,7 +20,7 @@ export async function renderCard<S extends InputSchema>(
   cardDir?: string,
   /** Runtime options forwarded to getData */
   options?: { baseUrl?: string; userId?: string }
-): Promise<{ html: string; state: CardState; textOutput?: string; viewModel: Record<string, unknown> }> {
+): Promise<{ html: string; state: CardState; textOutput?: string; viewModel: Record<string, unknown>; shareId?: string }> {
   // 1. Fetch data — defaults are applied by defineCard's getData wrapper
   let result;
   try {
@@ -68,7 +68,7 @@ export async function renderCard<S extends InputSchema>(
   ${html}
 </div>`.trim();
 
-  return { html: wrappedHtml, state: newState, textOutput: result.textOutput, viewModel: result.viewModel };
+  return { html: wrappedHtml, state: newState, textOutput: result.textOutput, viewModel: result.viewModel, shareId };
 }
 
 /**
