@@ -233,6 +233,7 @@ export default defineCard({
             images,
             title: `Photos of ${vm.cityName}`,
             maxVisible: 8,
+            theme: 'dark',
           })}
         </div>`
       : '';
