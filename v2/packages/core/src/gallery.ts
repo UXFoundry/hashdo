@@ -25,6 +25,8 @@ export interface GalleryConfig {
   maxVisible?: number;
   /** Number of grid columns. Defaults to 4. */
   columns?: number;
+  /** Color theme for labels. 'dark' uses light text for dark backgrounds. Defaults to 'light'. */
+  theme?: 'light' | 'dark';
 }
 
 /**
@@ -33,24 +35,26 @@ export interface GalleryConfig {
  * galleries appear on the same page.
  */
 export function galleryHtml(config: GalleryConfig): string {
-  const { images, title, description, maxVisible = 8, columns = 4 } = config;
+  const { images, title, description, maxVisible = 8, columns = 4, theme = 'light' } = config;
   if (!images.length) return '';
 
   const uid = 'g' + Math.random().toString(36).slice(2, 8);
   const visible = images.slice(0, maxVisible);
   const hiddenCount = Math.max(0, images.length - maxVisible);
 
+  const titleColor = theme === 'dark' ? 'rgba(255,255,255,0.95)' : '#1f2937';
+  const descColor = theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#6b7280';
+
   const header =
     title || description
       ? `<div style="padding:0 0 10px;">
-          ${title ? `<div style="font-size:15px;font-weight:600;color:#1f2937;letter-spacing:-0.01em;">${esc(title)}</div>` : ''}
-          ${description ? `<div style="font-size:13px;color:#6b7280;margin-top:2px;line-height:1.4;">${esc(description)}</div>` : ''}
+          ${title ? `<div style="font-size:15px;font-weight:600;color:${titleColor};letter-spacing:-0.01em;">${esc(title)}</div>` : ''}
+          ${description ? `<div style="font-size:13px;color:${descColor};margin-top:2px;line-height:1.4;">${esc(description)}</div>` : ''}
         </div>`
       : '';
 
   const cells = visible
     .map((img, i) => {
-      const isPortrait = img.width / img.height < 0.9;
       const isOverflow = hiddenCount > 0 && i === visible.length - 1;
       const overflowOverlay = isOverflow
         ? `<div style="position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(0,0,0,0.6);">
@@ -59,7 +63,7 @@ export function galleryHtml(config: GalleryConfig): string {
         : '';
 
       return `<div
-        style="position:relative;cursor:pointer;${isPortrait ? 'grid-row:span 2;' : 'aspect-ratio:1/1;'}overflow:hidden;border-radius:8px;background:#f3f4f6;"
+        style="position:relative;cursor:pointer;aspect-ratio:1/1;overflow:hidden;border-radius:8px;background:#f3f4f6;"
         onclick="${uid}_open(${i})"
         role="listitem"
       >
