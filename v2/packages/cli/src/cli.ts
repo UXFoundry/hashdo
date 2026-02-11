@@ -582,6 +582,15 @@ async function cmdStart() {
     enableScreenshots: true,
     stateStore,
     baseUrl: process.env['BASE_URL'] ?? `http://localhost:${port}`,
+    csp: {
+      resourceDomains: [
+        'api.qrserver.com',           // do-qr: QR code images
+        'covers.openlibrary.org',     // do-book: cover images
+        'avatars.githubusercontent.com', // do-github: owner avatars
+        'assets.coingecko.com',       // do-crypto: coin images
+        'upload.wikimedia.org',       // do-city: Wikipedia photos
+      ],
+    },
   };
 
   const server = createServer(async (req, res) => {
