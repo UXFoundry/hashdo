@@ -213,11 +213,11 @@ async function cmdServe() {
     stateStore,
     csp: {
       resourceDomains: [
-        'api.qrserver.com',
-        'covers.openlibrary.org',
-        'avatars.githubusercontent.com',
-        'assets.coingecko.com',
-        'upload.wikimedia.org',
+        'https://api.qrserver.com',
+        'https://covers.openlibrary.org',
+        'https://avatars.githubusercontent.com',
+        'https://assets.coingecko.com',
+        'https://upload.wikimedia.org',
       ],
     },
   });
@@ -593,11 +593,11 @@ async function cmdStart() {
     baseUrl: process.env['BASE_URL'] ?? `http://localhost:${port}`,
     csp: {
       resourceDomains: [
-        'api.qrserver.com',           // do-qr: QR code images
-        'covers.openlibrary.org',     // do-book: cover images
-        'avatars.githubusercontent.com', // do-github: owner avatars
-        'assets.coingecko.com',       // do-crypto: coin images
-        'upload.wikimedia.org',       // do-city: Wikipedia photos
+        'https://api.qrserver.com',           // do-qr: QR code images
+        'https://covers.openlibrary.org',     // do-book: cover images
+        'https://avatars.githubusercontent.com', // do-github: owner avatars
+        'https://assets.coingecko.com',       // do-crypto: coin images
+        'https://upload.wikimedia.org',       // do-city: Wikipedia photos
       ],
     },
   };
