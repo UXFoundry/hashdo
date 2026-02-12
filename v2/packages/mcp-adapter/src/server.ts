@@ -223,7 +223,7 @@ export function createMcpCardServer(options: McpCardServerOptions) {
   );
 
   for (const card of cards) {
-    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots, connectDomains, options.baseUrl);
+    registerCardTool(server, card, stateStore, cardDirs[card.name], enableScreenshots, connectDomains, resourceDomains, options.baseUrl);
     registerActionTools(server, card, stateStore);
   }
 
@@ -268,6 +268,7 @@ function registerCardTool(
   cardDir: string | undefined,
   enableScreenshots: boolean,
   connectDomains: string[],
+  resourceDomains: string[],
   baseUrl?: string
 ) {
   const zodShape = inputSchemaToZodShape(card.inputs);
@@ -286,9 +287,9 @@ function registerCardTool(
       _meta: {
         ui: {
           resourceUri: WIDGET_RESOURCE_URI,
-          domain: 'hashdo',
+          domain: '1a92781cb69238237c152ea39363cf28.claudemcpcontent.com',
           csp: {
-            resourceDomains: [],
+            resourceDomains,
             connectDomains,
           },
         },
