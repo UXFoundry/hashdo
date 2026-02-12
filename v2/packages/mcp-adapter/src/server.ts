@@ -73,6 +73,20 @@ const WIDGET_HTML = `<!DOCTYPE html>
 (function() {
   var rendered = false;
 
+  function notifySize() {
+    var el = document.documentElement;
+    el.style.height = 'fit-content';
+    var height = Math.ceil(el.getBoundingClientRect().height);
+    el.style.height = '';
+    if (height > 0) {
+      window.parent.postMessage({
+        jsonrpc: '2.0',
+        method: 'ui/notifications/size-changed',
+        params: { height: height }
+      }, '*');
+    }
+  }
+
   function render(html) {
     if (!html || rendered) return;
     rendered = true;
@@ -87,6 +101,9 @@ const WIDGET_HTML = `<!DOCTYPE html>
       else { fresh.textContent = old.textContent; }
       old.parentNode.replaceChild(fresh, old);
     }
+    // Tell the host how tall the content is, and watch for dynamic changes
+    requestAnimationFrame(notifySize);
+    new ResizeObserver(function() { requestAnimationFrame(notifySize); }).observe(container);
   }
 
   // Extract HTML from a tool result object (tries _meta.html then structuredContent._cardHtml)
