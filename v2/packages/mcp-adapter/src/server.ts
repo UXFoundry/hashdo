@@ -193,7 +193,7 @@ export function createMcpCardServer(options: McpCardServerOptions) {
         text: WIDGET_HTML,
         _meta: {
           ui: {
-            domain: 'hashdo',
+            domain: '1a92781cb69238237c152ea39363cf28.claudemcpcontent.com',
             csp: {
               connectDomains,
               resourceDomains,
